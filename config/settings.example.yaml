@@ -1,0 +1,110 @@
+# SilentReach Configuration
+# Copy to config/settings.local.yaml and fill in your values
+
+# Global settings
+global:
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+  default_delay: 2.0  # Seconds between requests
+  max_retries: 3
+  timeout: 30
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+
+# Logger settings
+logging:
+  level: INFO
+  file: logs/silentreach.log
+  max_size_mb: 50
+  backup_count: 5
+
+# Rate limiting
+rate_limit:
+  enabled: true
+  default_rpm: 30  # Requests per minute
+  per_platform:
+    reddit: 20
+    twitter: 15
+    youtube: 60
+    instagram: 10
+    linkedin: 20
+
+# Cookie persistence
+cookies:
+  storage_path: ~/.silentreach/cookies/
+  auto_refresh: true
+  refresh_interval_hours: 12
+
+# Proxy settings
+proxies:
+  enabled: false
+  rotation: true
+  # residential_proxies:
+  #   provider: proxyhat
+  #   api_key: "${PROXYHAT_API_KEY}"
+
+# Platform-specific settings
+platforms:
+  reddit:
+    primary: agent_reach  # Use agent-reach by default
+    fallback: nodriver
+    auth_required: true   # Needs cookie/session
+    stealth_level: high
+    
+  youtube:
+    primary: agent_reach
+    fallback: nodriver
+    auth_required: false
+    stealth_level: medium
+    
+  twitter:
+    primary: nodriver     # Requires authenticated browser
+    fallback: agent_reach
+    auth_required: true
+    stealth_level: very_high
+    
+  instagram:
+    primary: nodriver
+    fallback: none
+    auth_required: true
+    stealth_level: very_high
+    
+  linkedin:
+    primary: nodriver
+    fallback: agent_reach  # Public pages only
+    auth_required: true
+    stealth_level: high
+    
+  facebook:
+    primary: nodriver
+    fallback: none
+    auth_required: true
+    stealth_level: very_high
+    
+  bilibili:
+    primary: agent_reach
+    fallback: nodriver
+    auth_required: false
+    stealth_level: medium
+    
+  v2ex:
+    primary: agent_reach
+    fallback: nodriver
+    auth_required: false
+    stealth_level: high
+
+# Output settings
+output:
+  default_format: json
+  formats:
+    - json
+    - markdown
+    - csv
+  save_raw: true  # Save raw HTML responses
+
+# Data retention
+retention:
+  cache_ttl_hours: 24
+  max_results: 1000
+  deduplicate: true
