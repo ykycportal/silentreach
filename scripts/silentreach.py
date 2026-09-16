@@ -106,6 +106,49 @@ async def cmd_search(args):
             "results": results,
         }
         print(json.dumps(output, indent=2))
+    elif args.format == "csv":
+        from services.output_fmt import OutputFormatter
+        print(OutputFormatter.to_csv(results))
+    elif args.format == "pdf":
+        from services.output_fmt import OutputFormatter
+        pdf_bytes = OutputFormatter.to_pdf(results, title=f"SilentReach: {args.query}")
+        if pdf_bytes:
+            output_path = Path(args.output) if args.output else None
+            if output_path:
+                with open(output_path, 'wb') as f:
+                    f.write(pdf_bytes)
+                print(f"[✓] PDF saved to: {output_path}")
+            else:
+                # Print first page preview
+                print("[PDF generated - use -o flag to save]")
+        else:
+            print("[!] PDF generation failed (install reportlab)")
+    elif args.format == "xlsx":
+        from services.output_fmt import OutputFormatter
+        xlsx_bytes = OutputFormatter.to_excel(results, title=f"SilentReach: {args.query}")
+        if xlsx_bytes:
+            output_path = Path(args.output) if args.output else None
+            if output_path:
+                with open(output_path, 'wb') as f:
+                    f.write(xlsx_bytes)
+                print(f"[✓] Excel saved to: {output_path}")
+            else:
+                print("[Excel generated - use -o flag to save]")
+        else:
+            print("[!] Excel generation failed (install openpyxl)")
+    elif args.format == "ods":
+        from services.output_fmt import OutputFormatter
+        ods_bytes = OutputFormatter.to_odf(results, title=f"SilentReach: {args.query}")
+        if ods_bytes:
+            output_path = Path(args.output) if args.output else None
+            if output_path:
+                with open(output_path, 'wb') as f:
+                    f.write(ods_bytes)
+                print(f"[✓] ODS saved to: {output_path}")
+            else:
+                print("[ODS generated - use -o flag to save]")
+        else:
+            print("[!] ODS generation failed (install odfpy)")
     else:
         # Markdown format
         print(f"# SilentReach Results: {args.query}\n")
@@ -127,16 +170,23 @@ async def cmd_search(args):
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
+        # Determine format from extension or argument
+        fmt = args.format if args.format != 'md' else output_path.suffix.lstrip('.')
+        if fmt == '':
+            fmt = 'md'
+
+        # Format data for output
         output_data = {
             "query": args.query,
             "timestamp": datetime.now().isoformat(),
             "results": results,
         }
-        
-        with open(output_path, "w") as f:
-            json.dump(output_data, f, indent=2)
-        
+
+        # Use OutputFormatter for all formats
+        from services.output_fmt import OutputFormatter
+        OutputFormatter.save_to_file(output_data, str(output_path), fmt)
+
         logger.info(f"Results saved to {output_path}")
 
 
@@ -426,8 +476,8 @@ def main():
                                help="Platform(s) to search (comma-separated or 'all')")
     search_parser.add_argument("--limit", "-l", type=int, default=20,
                                help="Max results per platform")
-    search_parser.add_argument("--format", "-f", choices=["json", "markdown"], default="markdown",
-                               help="Output format")
+    search_parser.add_argument("--format", "-f", choices=["json", "md", "csv", "txt", "pdf", "xlsx", "ods"], default="md",
+                               help="Output format (default: markdown)")
     search_parser.add_argument("--output", "-o", help="Save results to file")
     search_parser.set_defaults(func=cmd_search)
     

@@ -37,6 +37,24 @@ setup(
         "proxy": [
             "requests[socks]>=2.31",
         ],
+        "export": [
+            "reportlab>=4.0",
+            "openpyxl>=3.1",
+            "odfpy>=1.4",
+        ],
+        "sheets": [
+            "gspread>=6.0",
+            "google-auth>=2.0",
+        ],
+        "all": [
+            "reportlab>=4.0",
+            "openpyxl>=3.1",
+            "odfpy>=1.4",
+            "gspread>=6.0",
+            "google-auth>=2.0",
+            "redis>=5.0",
+            "requests[socks]>=2.31",
+        ],
     },
     entry_points={
         "console_scripts": [
