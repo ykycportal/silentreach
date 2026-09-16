@@ -158,15 +158,26 @@ class InstagramScraper:
     def _parse_profile(self, content: str, username: str) -> dict:
         """Parse Instagram profile info."""
         from bs4 import BeautifulSoup
-        
+
         soup = BeautifulSoup(content, "html.parser")
-        
-        # Profile stats
-        posts_elem = soup.select_one("[class*='g47SY']")
-        followers_elem = soup.select_one("[class*='g47SY']")
-        
-        return {
-            "username": username,
-            "posts": int(posts_elem.get_text() if posts_elem else 0),
-            "followers": int(followers_elem.get_text() if followers_elem else 0),
-        }
+
+        # Profile stats - use context-aware parsing
+        # Find all stat items and extract posts/followers from context
+        stats = []
+        for stat_elem in soup.select("[class*='g47SY'], li[class*='g47SY']"):
+            text = stat_elem.get_text(strip=True)
+            if text and text.isdigit():
+                stats.append(int(text))
+
+        # Instagram profile stats are typically: posts, followers, following
+        # We return what we can find, prioritizing the first two numeric values
+        result = {"username": username}
+        if len(stats) >= 1:
+            result["posts"] = stats[0]
+        if len(stats) >= 2:
+            result["followers"] = stats[1]
+        elif len(stats) >= 1:
+            # Fallback: if only one stat found, assume it's followers
+            result["followers"] = stats[0]
+
+        return result

@@ -31,7 +31,7 @@ class ScrapedResult:
             "platform": self.platform,
             "query": self.query,
             "timestamp": self.timestamp,
-            "data": self.data[:100],
+            "data": self.data,
             "total_results": len(self.data),
             "error": self.error,
             "status": self.status,

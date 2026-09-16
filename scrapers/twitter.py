@@ -91,18 +91,18 @@ class TwitterScraper:
         try:
             page = await browser.get("https://x.com/login")
             
-            # Find username input
-            username_input = await page.select("#username")
+            # Find username input - Twitter/X login uses name attribute
+            username_input = await page.select('input[name="username"], input[type="text"]')
             if username_input:
-                await username_input.click()
-                await username_input.send_keys(username)
+                await username_input[0].click()
+                await username_input[0].send_keys(username)
                 await page.submit()
             
             # Find password input
-            password_input = await page.select('input[name="password"]')
+            password_input = await page.select('input[type="password"]')
             if password_input:
-                await password_input.click()
-                await password_input.send_keys(password)
+                await password_input[0].click()
+                await password_input[0].send_keys(password)
                 await page.submit()
             
             # Wait for login

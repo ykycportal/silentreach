@@ -24,19 +24,19 @@ class RedditScraper(BaseScraper):
     
     async def search(self, query: str, limit: int = 20, **kwargs) -> ScrapedResult:
         await self._apply_rate_limit()
-        
+
         # Try agent-reach first
         try:
             from agent_reach import AgentReach
             reach = AgentReach()
-            
+
             # Search Reddit
             url = f"https://reddit.com/search/?q={query}&sort=relevance"
             result = reach.read(url)
-            
+
             if result:
                 content = result.content
-                items = self._parse_reddit_content(content, query)
+                items = self._parse_reddit_content(content, query, limit=limit)
                 
                 return ScrapedResult(
                     platform=self.platform,
@@ -61,7 +61,7 @@ class RedditScraper(BaseScraper):
             await asyncio.sleep(2)  # Wait for JS to render
             
             content = await page.get_content()
-            items = self._parse_reddit_content(content, query)
+            items = self._parse_reddit_content(content, query, limit=limit)
             
             await browser.stop()
             
@@ -130,16 +130,16 @@ class RedditScraper(BaseScraper):
                 status="error",
             )
     
-    def _parse_reddit_content(self, content: str, query: str) -> list:
+    def _parse_reddit_content(self, content: str, query: str, limit: int = 20) -> list:
         """Parse Reddit HTML/content into structured items."""
         from bs4 import BeautifulSoup
-        
+
         items = []
         soup = BeautifulSoup(content, "html.parser")
-        
+
         # Try to find post elements
         post_elements = soup.select(".Post, .thing, article, [data-testid='post-container']")
-        
+
         for elem in post_elements[:limit]:
             title = elem.select_one(".PostTitle, .title, h1, h2, a")
             if title:
