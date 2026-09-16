@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 try:
     from reportlab.lib.pagesizes import letter, A4
     from reportlab.lib import colors
+    from reportlab.lib.units import inch
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     HAS_REPORTLAB = True
