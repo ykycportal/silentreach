@@ -1,6 +1,7 @@
 """
-SilentReach - Ultimate undetected web intelligence framework.
-Combines agent-reach (public) + nodriver (authenticated) for complete coverage.
+SilentReach - Ultimate undetected web intelligence framework, platform-agnostic.
+Combines agent-reach + nodriver for social media with extra skillsets for excellent results.
+Published in different formats.
 """
 
 import asyncio

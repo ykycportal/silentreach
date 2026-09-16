@@ -464,7 +464,7 @@ def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         prog="silentreach",
-        description="SilentReach - The ultimate undetected web intelligence framework",
+        description="SilentReach - Ultimate undetected web intelligence framework, platform-agnostic combining agent-reach + nodriver for social media with extra skillsets for excellent results. Published in different formats.",
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
