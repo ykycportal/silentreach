@@ -140,27 +140,27 @@ class OutputFormatter:
     def save_to_file(data: Any, filename: str, format: str = "auto") -> str:
         """
         Save data to file with automatic format detection.
-        
+
         Returns:
-            Path to saved file
+            Path to saved file or None if failed
         """
         path = Path(filename)
-        
+
         # Auto-detect format from extension
         if format == "auto":
             fmt = path.suffix.lower().lstrip('.')
         else:
             fmt = format.lower()
-        
+
         # Ensure proper extension
         if fmt not in ["json", "md", "csv", "txt", "pdf", "xlsx", "ods"]:
             fmt = "json"
             path = path.with_suffix(f".{fmt}")
         elif not path.suffix:
             path = path.with_suffix(f".{fmt}")
-        
+
         content = None
-        
+
         if fmt == "json":
             content = OutputFormatter.to_json(data)
         elif fmt in ["md", "markdown"]:
@@ -170,21 +170,22 @@ class OutputFormatter:
         elif fmt == "txt":
             content = OutputFormatter.to_text(data)
         elif fmt == "pdf":
-            content = OutputFormatter.to_pdf(data, return_string=False)
+            content = OutputFormatter.to_pdf(data, return_string=True)
         elif fmt == "xlsx":
-            content = OutputFormatter.to_excel(data, return_string=False)
+            content = OutputFormatter.to_excel(data, return_string=True)
         elif fmt == "ods":
-            content = OutputFormatter.to_odf(data, return_string=False)
-        
+            content = OutputFormatter.to_odf(data, return_string=True)
+
         if content:
             path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "w" if fmt in ["json", "md", "csv", "txt"] else "wb") as f:
                 f.write(content)
-            
+
             logger.info(f"Data saved to {path}")
             return str(path)
-        
-        return str(path)
+
+        logger.error(f"Failed to generate {fmt} content")
+        return None
     
     @staticmethod
     def to_pdf(data: Dict, title: str = "SilentReach Report", filename: str = None, 
