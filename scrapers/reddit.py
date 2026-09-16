@@ -1,157 +1,201 @@
 """
 Reddit Scraper for SilentReach
-Supports both public (agent-reach) and authenticated (nodriver) modes.
+Uses rdt-cli (from agent-reach ecosystem) or nodriver with cookies.
 """
 
 import asyncio
 import logging
+import subprocess
+import json
 from typing import Optional
-from scrapers.base import BaseScraper, ScrapedResult
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-class RedditScraper(BaseScraper):
-    platform = "reddit"
-    primary_method = "agent_reach"
-    fallback_method = "nodriver"
-    auth_required = True
-    stealth_level = "high"
+class RedditScraper:
+    """Reddit scraper using rdt-cli or nodriver."""
     
     def __init__(self, config: Optional[dict] = None):
-        super().__init__(config)
-        self.subreddits = ["dropshipping", "ecommerce", "amazonfba", "shopify"]
+        self.config = config or {}
+        self.cookie_path = Path.home() / ".silentreach" / "cookies" / "reddit.json"
     
-    async def search(self, query: str, limit: int = 20, **kwargs) -> ScrapedResult:
-        await self._apply_rate_limit()
+    async def search(self, query: str, limit: int = 20, **kwargs) -> dict:
+        """Search Reddit posts."""
+        results = {"query": query, "posts": [], "total": 0}
         
-        # Try agent-reach first
-        try:
-            from agent_reach import AgentReach
-            reach = AgentReach()
-            
-            # Search Reddit
-            url = f"https://reddit.com/search/?q={query}&sort=relevance"
-            result = reach.read(url)
-            
-            if result:
-                content = result.content
-                items = self._parse_reddit_content(content, query)
-                
-                return ScrapedResult(
-                    platform=self.platform,
-                    query=query,
-                    data=items,
-                    raw_html=content,
-                )
-        except Exception as e:
-            logger.warning(f"Agent-reach failed: {e}")
+        # Try rdt-cli first (primary method)
+        rdt_result = await self._search_rdt(query, limit)
+        if rdt_result and len(rdt_result.get("posts", [])) > 0:
+            return rdt_result
         
         # Fallback to nodriver
+        logger.info("rdt-cli failed, trying nodriver...")
+        nr_result = await self._search_nodriver(query, limit)
+        if nr_result:
+            return nr_result
+        
+        return results
+    
+    async def _search_rdt(self, query: str, limit: int) -> dict:
+        """Search Reddit using rdt-cli."""
+        try:
+            # Check if rdt-cli is installed
+            probe = await asyncio.create_subprocess_exec(
+                "rdt", "--version",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await probe.communicate()
+            
+            if probe.returncode != 0:
+                logger.warning("rdt-cli not found or not configured")
+                return {"query": query, "posts": []}
+            
+            # Run search
+            proc = await asyncio.create_subprocess_exec(
+                "rdt", "search", query, "--limit", str(limit),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            
+            if proc.returncode == 0 and stdout:
+                posts = self._parse_rdt_output(stdout.decode())
+                return {
+                    "query": query,
+                    "posts": posts,
+                    "total": len(posts),
+                    "method": "rdt-cli",
+                }
+            
+            return {"query": query, "posts": [], "error": stderr.decode() if stderr else "Unknown error"}
+            
+        except FileNotFoundError:
+            logger.warning("rdt-cli not installed")
+            return {"query": query, "posts": []}
+        except Exception as e:
+            logger.error(f"rdt-cli error: {e}")
+            return {"query": query, "posts": [], "error": str(e)}
+    
+    async def _search_nodriver(self, query: str, limit: int) -> dict:
+        """Search Reddit using nodriver."""
         try:
             import nodriver as uc
+            
             browser = await uc.start(headless=True)
             
             # Load cookies if available
-            cookies = self._load_cookies()
-            if cookies:
-                browser = await browser.load_cookies(self._cookie_path)
+            if self.cookie_path.exists():
+                try:
+                    browser = await browser.load_cookies(self.cookie_path)
+                except:
+                    pass
             
             page = await browser.get(f"https://www.reddit.com/search/?q={query}")
-            await asyncio.sleep(2)  # Wait for JS to render
+            await asyncio.sleep(3)
             
             content = await page.get_content()
-            items = self._parse_reddit_content(content, query)
+            posts = self._parse_html(content, query)
             
             await browser.stop()
             
-            return ScrapedResult(
-                platform=self.platform,
-                query=query,
-                data=items,
-                raw_html=content,
-            )
-        except Exception as e:
-            logger.error(f"Nodriver failed: {e}")
-            return ScrapedResult(
-                platform=self.platform,
-                query=query,
-                error=str(e),
-                status="error",
-            )
-    
-    async def get_item(self, item_id: str, **kwargs) -> ScrapedResult:
-        """Get a specific Reddit post/comment."""
-        await self._apply_rate_limit()
-        
-        try:
-            from agent_reach import AgentReach
-            reach = AgentReach()
-            url = f"https://reddit.com/{item_id}"
-            result = reach.read(url)
+            return {
+                "query": query,
+                "posts": posts[:limit],
+                "total": len(posts),
+                "method": "nodriver",
+            }
             
-            if result:
-                return ScrapedResult(
-                    platform=self.platform,
-                    query=item_id,
-                    data=[result.content],
-                    raw_html=result.content,
-                )
         except Exception as e:
-            logger.error(f"Error fetching Reddit item: {e}")
-            return ScrapedResult(
-                platform=self.platform,
-                query=item_id,
-                error=str(e),
-                status="error",
-            )
+            logger.error(f"nodriver search failed: {e}")
+            return {"query": query, "posts": [], "error": str(e)}
     
-    async def get_profile(self, username: str, **kwargs) -> ScrapedResult:
-        """Get Reddit user profile."""
-        await self._apply_rate_limit()
-        
+    def _parse_rdt_output(self, output: str) -> list:
+        """Parse rdt-cli JSON output."""
+        posts = []
         try:
-            from agent_reach import AgentReach
-            reach = AgentReach()
-            url = f"https://reddit.com/user/{username}"
-            result = reach.read(url)
-            
-            if result:
-                return ScrapedResult(
-                    platform=self.platform,
-                    query=username,
-                    data=[result.content],
-                )
-        except Exception as e:
-            return ScrapedResult(
-                platform=self.platform,
-                query=username,
-                error=str(e),
-                status="error",
-            )
+            data = json.loads(output)
+            if isinstance(data, list):
+                for post in data[:20]:
+                    posts.append({
+                        "title": post.get("title", ""),
+                        "author": post.get("author", ""),
+                        "score": post.get("score", 0),
+                        "num_comments": post.get("num_comments", 0),
+                        "url": post.get("url", ""),
+                        "subreddit": post.get("subreddit", ""),
+                        "created_utc": post.get("created_utc", ""),
+                    })
+        except json.JSONDecodeError:
+            # Try to parse as individual lines
+            for line in output.strip().split("\n"):
+                if line.startswith("{"):
+                    try:
+                        post = json.loads(line)
+                        posts.append({
+                            "title": post.get("title", ""),
+                            "author": post.get("author", ""),
+                            "score": post.get("score", 0),
+                        })
+                    except:
+                        pass
+        return posts
     
-    def _parse_reddit_content(self, content: str, query: str) -> list:
-        """Parse Reddit HTML/content into structured items."""
+    def _parse_html(self, html: str, query: str) -> list:
+        """Parse Reddit HTML for posts."""
         from bs4 import BeautifulSoup
         
-        items = []
-        soup = BeautifulSoup(content, "html.parser")
+        posts = []
+        soup = BeautifulSoup(html, "html.parser")
         
-        # Try to find post elements
-        post_elements = soup.select(".Post, .thing, article, [data-testid='post-container']")
+        # Reddit post containers
+        post_containers = soup.select(".Post, article, [data-testid='post-container']")
         
-        for elem in post_elements[:limit]:
-            title = elem.select_one(".PostTitle, .title, h1, h2, a")
-            if title:
-                items.append({
-                    "title": title.get_text(strip=True),
-                    "url": title.get("href", ""),
-                    "text": elem.get_text(strip=True)[:500],
+        for container in post_containers[:30]:
+            title_elem = container.select_one(".PostTitle, .title, h1, h2, a")
+            if title_elem:
+                title = title_elem.get_text(strip=True)
+                link = title_elem.get("href", "")
+                
+                # Get metadata
+                score_elem = container.select_one("[class*='score']")
+                comments_elem = container.select_one("[class*='comments']")
+                
+                posts.append({
+                    "title": title,
+                    "link": link,
+                    "score": score_elem.get_text() if score_elem else "",
+                    "comments": comments_elem.get_text() if comments_elem else "",
+                    "query": query,
                 })
         
-        # If no structured elements, extract all text
-        if not items:
-            text = self._extract_text_from_html(content)
-            items.append({"title": query, "text": text[:1000]})
+        return posts
+    
+    async def get_post(self, post_id: str) -> dict:
+        """Get a specific Reddit post."""
+        # Try rdt-cli
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "rdt", "read", post_id,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            
+            if proc.returncode == 0 and stdout:
+                post = json.loads(stdout)
+                return {"post_id": post_id, "post": post}
+        except:
+            pass
         
-        return items[:20]
+        # Fallback to direct URL
+        try:
+            import urllib.request
+            url = f"https://www.reddit.com/comments/{post_id}.json"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                return {"post_id": post_id, "post": data}
+        except Exception as e:
+            return {"post_id": post_id, "error": str(e)}

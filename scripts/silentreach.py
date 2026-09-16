@@ -53,13 +53,14 @@ async def cmd_search(args):
     """Execute a search across platforms."""
     config = load_config()
     
+    # Import scrapers dynamically
     scrapers = {
-        "reddit": "scrapers.reddit.RedditScraper",
-        "youtube": "scrapers.youtube.YouTubeScraper",
-        "twitter": "scrapers.twitter.TwitterScraper",
-        "instagram": "scrapers.instagram.InstagramScraper",
-        "linkedin": "scrapers.linkedin.LinkedInScraper",
-        "bilibili": "scrapers.bilibili.BilibiliScraper",
+        "reddit": ("scrapers.reddit", "RedditScraper"),
+        "youtube": ("scrapers.youtube", "YouTubeScraper"),
+        "twitter": ("scrapers.twitter", "TwitterScraper"),
+        "instagram": ("scrapers.instagram", "InstagramScraper"),
+        "linkedin": ("scrapers.linkedin", "LinkedInScraper"),
+        "bilibili": ("scrapers.bilibili", "BilibiliScraper"),
     }
     
     results = {}
@@ -78,15 +79,21 @@ async def cmd_search(args):
         logger.info(f"Searching {platform} for: {args.query}")
         
         try:
-            module_path, class_name = scrapers[platform].rsplit(".", 1)
-            module = __import__(f"{module_path}", fromlist=[class_name])
+            module_name, class_name = scrapers[platform]
+            module = __import__(module_name, fromlist=[class_name])
             ScraperClass = getattr(module, class_name)
             
             scraper = ScraperClass(config)
-            result = await scraper.search(args.query, limit=args.limit)
+            
+            # Call search with correct signature
+            if hasattr(scraper, 'search'):
+                result = await scraper.search(args.query, limit=args.limit)
+            else:
+                result = {"error": f"{platform} scraper has no search method"}
             
             results[platform] = result
-            logger.info(f"Found {len(result.get('results', result.get('videos', [])))} items on {platform}")
+            count = len(result.get("posts", result.get("videos", result.get("tweets", []))))
+            logger.info(f"Found {count} items on {platform}")
         except Exception as e:
             logger.error(f"Error on {platform}: {e}")
             results[platform] = {"error": str(e)}

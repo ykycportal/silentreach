@@ -1,51 +1,61 @@
 """
 YouTube Scraper for SilentReach
-Uses agent-reach for public access, nodriver for authenticated search.
+Uses yt-dlp directly for video info and search.
 """
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
 
 class YouTubeScraper:
-    """YouTube content scraper using yt-dlp and agent-reach."""
+    """YouTube scraper using yt-dlp."""
     
     def __init__(self, config: Optional[dict] = None):
         self.config = config or {}
     
     async def search(self, query: str, limit: int = 20) -> dict:
         """Search YouTube videos."""
-        results = []
-        
-        # Try agent-reach first
         try:
-            from agent_reach import AgentReach
-            reach = AgentReach()
+            import yt_dlp
             
             url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
-            result = reach.read(url)
             
-            if result:
-                results.extend(self._parse_search_results(result.content, query))
+            ydl_opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "skip_download": True,
+                "extract_flat": False,
+            }
+            
+            videos = []
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                for entry in info.get("entries", [])[:limit]:
+                    videos.append({
+                        "title": entry.get("title"),
+                        "video_id": entry.get("id"),
+                        "channel": entry.get("channel"),
+                        "duration": entry.get("duration"),
+                        "view_count": entry.get("view_count"),
+                        "upload_date": entry.get("upload_date"),
+                        "description": entry.get("description", "")[:200],
+                        "thumbnail": entry.get("thumbnail"),
+                    })
+            
+            return {
+                "query": query,
+                "videos": videos,
+                "total": len(videos),
+                "method": "yt-dlp",
+            }
+            
         except Exception as e:
-            logger.warning(f"Agent-reach YouTube search failed: {e}")
-        
-        # Fallback to yt-dlp
-        if len(results) < limit:
-            try:
-                yt_results = await self._search_ytdlp(query, limit - len(results))
-                results.extend(yt_results)
-            except Exception as e:
-                logger.warning(f"yt-dlp search failed: {e}")
-        
-        return {
-            "query": query,
-            "results": results[:limit],
-            "total": len(results),
-        }
+            logger.error(f"YouTube search failed: {e}")
+            return {"query": query, "videos": [], "error": str(e)}
     
     async def get_video_info(self, video_id: str) -> dict:
         """Get detailed video information."""
@@ -63,72 +73,89 @@ class YouTubeScraper:
                 return {
                     "id": info.get("id"),
                     "title": info.get("title"),
-                    "description": info.get("description", "")[:500],
+                    "description": info.get("description", "")[:1000],
                     "duration": info.get("duration"),
                     "view_count": info.get("view_count"),
+                    "like_count": info.get("like_count"),
                     "channel": info.get("channel"),
+                    "channel_id": info.get("channel_id"),
                     "upload_date": info.get("upload_date"),
                     "thumbnail": info.get("thumbnail"),
                     "tags": info.get("tags", []),
+                    "categories": info.get("categories", []),
+                    "subtitles": self._get_subtitles(info),
                 }
+                
         except Exception as e:
-            logger.error(f"Error fetching video info: {e}")
-            return {"error": str(e)}
+            logger.error(f"YouTube video info failed: {e}")
+            return {"video_id": video_id, "error": str(e)}
     
-    def _parse_search_results(self, content: str, query: str) -> list:
-        """Parse YouTube search results HTML."""
-        from bs4 import BeautifulSoup
+    def _get_subtitles(self, info: dict) -> dict:
+        """Extract subtitle information."""
+        subtitles = {}
         
-        results = []
-        soup = BeautifulSoup(content, "html.parser")
+        if "requested_subtitles" in info:
+            for lang, url in info["requested_subtitles"].items():
+                subtitles[lang] = url
         
-        # YouTube search result containers
-        video_containers = soup.select("ytd-grid-video-renderer, ytd-video-renderer, .yt-lockup")
+        # Also check automatic captions
+        if "automatic_captions" in info:
+            for lang, urls in info["automatic_captions"].items():
+                if lang not in subtitles:
+                    subtitles[f"{lang}_auto"] = urls[0].get("url", "")
         
-        for container in video_containers[:20]:
-            title_elem = container.select_one("a#video-title, .yt-lockup-title a, h3 a")
-            if title_elem:
-                title = title_elem.get_text(strip=True)
-                video_id = title_elem.get("href", "").split("?v=")[-1].split("&")[0]
-                
-                channel = container.select_one(".yt-lockup-byline a, .video-owner a")
-                
-                results.append({
-                    "title": title,
-                    "video_id": video_id,
-                    "channel": channel.get_text(strip=True) if channel else "",
-                    "query": query,
-                })
-        
-        return results
+        return subtitles
     
-    async def _search_ytdlp(self, query: str, limit: int) -> list:
-        """Search YouTube using yt-dlp."""
+    async def get_channel_info(self, channel_id: str) -> dict:
+        """Get YouTube channel information."""
         try:
             import yt_dlp
-            
-            url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
             
             ydl_opts = {
                 "quiet": True,
                 "no_warnings": True,
-                "skip_download": True,
             }
             
-            results = []
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
+                info = ydl.extract_info(f"https://www.youtube.com/channel/{channel_id}", download=False)
                 
-                for entry in info.get("entries", [])[:limit]:
-                    results.append({
-                        "title": entry.get("title"),
-                        "video_id": entry.get("id"),
-                        "channel": entry.get("channel"),
-                        "duration": entry.get("duration"),
-                        "view_count": entry.get("view_count"),
-                    })
-            
-            return results
+                return {
+                    "channel_id": channel_id,
+                    "name": info.get("name"),
+                    "description": info.get("description", "")[:500],
+                    "subscriber_count": info.get("subscriber_count"),
+                    "video_count": info.get("video_count"),
+                    "thumbnail": info.get("thumbnail"),
+                }
+                
         except Exception as e:
-            logger.error(f"yt-dlp search error: {e}")
-            return []
+            return {"channel_id": channel_id, "error": str(e)}
+    
+    async def download_subtitle(self, video_id: str, lang: str = "en") -> Optional[str]:
+        """Download video subtitles."""
+        try:
+            import yt_dlp
+            
+            ydl_opts = {
+                "skip_download": True,
+                "writesubtitles": True,
+                "writeautomaticsub": True,
+                "subtitleslangs": [lang],
+                "subtitlesformat": "srv1/txt/vtt/json",
+                "outtmpl": f"/tmp/subtitle_{video_id}.%(ext)s",
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                
+                # Find subtitle file
+                if "requested_subtitles" in info:
+                    for l, data in info["requested_subtitles"].items():
+                        if l == lang or lang in l:
+                            return data.get("url")
+                
+                return None
+                
+        except Exception as e:
+            logger.error(f"Subtitle download failed: {e}")
+            return None
