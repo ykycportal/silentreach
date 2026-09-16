@@ -378,7 +378,7 @@ class OutputFormatter:
 
         try:
             from odf.opendocument import OpenDocumentSpreadsheet
-            from odf.table import Table, TableRow, TableCell, CoveredTableColumn
+            from odf.table import Table, TableRow, TableCell
             from odf.text import P
             from odf.style import Style, TextProperties, TableProperties, ParagraphProperties
             from odf.namespaces import STYLE
