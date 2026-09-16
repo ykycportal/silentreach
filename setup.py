@@ -14,7 +14,7 @@ setup(
     packages=find_packages(),
     python_requires=">=3.9",
     install_requires=[
-        "agent-reach>=1.5.0",
+        "agent-reach @ git+https://github.com/Panniantong/agent-reach.git@v1.5.0",
         "nodriver>=0.38",
         "beautifulsoup4>=4.12",
         "httpx>=0.27",

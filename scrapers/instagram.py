@@ -167,20 +167,41 @@ class InstagramScraper:
     def _parse_profile(self, content: str, username: str) -> dict:
         """Parse Instagram profile info."""
         from bs4 import BeautifulSoup
-        
+
         soup = BeautifulSoup(content, "html.parser")
-        
-        # Profile stats
-        posts_elem = soup.select_one("[class*='g47SY']")
-        followers_elem = soup.select_one("[class*='g47SY']")
-        
+
+        # Profile stats - different selectors for posts vs followers
+        # Instagram uses nested divs with specific classes
+        stats_containers = soup.select("ul[class*='gdHQl'] li span") or soup.select('[class*="g47SY"]')
+
+        # Try to find specific elements by context
+        posts = 0
+        followers = 0
+
+        # Look for posts count (usually first number in stats)
+        for elem in stats_containers:
+            text = elem.get_text(strip=True)
+            if text and text.replace(',', '').isdigit():
+                num = int(text.replace(',', ''))
+                if num > 1000:  # Likely followers
+                    followers = num
+                elif posts == 0:  # First number is posts
+                    posts = num
+
+        # Fallback: try meta tags
+        if not posts:
+            posts_meta = soup.select_one("meta[property='og:url']")
+            if posts_meta:
+                # Can't get exact counts from meta, set defaults
+                posts = 0
+
         # Bio
         bio_elem = soup.select_one("meta[name='description']")
         bio = bio_elem.get("content", "") if bio_elem else ""
-        
+
         return {
             "username": username,
-            "posts": int(posts_elem.get_text().replace(",", "").strip()) if posts_elem else 0,
-            "followers": int(followers_elem.get_text().replace(",", "").strip()) if followers_elem else 0,
+            "posts": posts,
+            "followers": followers,
             "bio": bio[:300],
         }
