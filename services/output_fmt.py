@@ -375,32 +375,38 @@ class OutputFormatter:
         if not HAS_ODF:
             logger.error("odfpy not installed. Run: pip install odfpy")
             return None
-        
+
         try:
             from odf.opendocument import OpenDocumentSpreadsheet
-            from odf.table import Table, TableRow, TableCell
+            from odf.table import Table, TableRow, TableCell, CoveredTableColumn
             from odf.text import P
-            
+            from odf.style import Style, TextProperties, TableProperties, ParagraphProperties
+            from odf.namespaces import STYLE
+
             doc = OpenDocumentSpreadsheet()
-            
+
+            # Create default styles
+            style = Style()
+            doc.styles.addElement(style)
+
             # Process each platform
             if isinstance(data, dict):
                 for platform, results in data.items():
                     if isinstance(results, dict):
                         table = Table(name=platform[:31])
-                        
+
                         items = results.get('posts', results.get('videos', results.get('tweets', [])))
-                        
+
                         if items:
                             # Header row
                             header_row = TableRow()
                             for header in ['Title', 'Author', 'Score', 'Date', 'URL']:
                                 cell = TableCell()
-                                cell.addElement(P(text=header, 
-                                                    styleName='Table_Header'))
+                                p = P(text=header)
+                                cell.addElement(p)
                                 header_row.addElement(cell)
                             table.addElement(header_row)
-                            
+
                             # Data rows
                             for item in items[:100]:
                                 row = TableRow()
@@ -412,12 +418,13 @@ class OutputFormatter:
                                     item.get('link', item.get('url', '')),
                                 ]:
                                     cell = TableCell()
-                                    cell.addElement(P(text=str(value)[:100]))
+                                    p = P(text=str(value)[:100])
+                                    cell.addElement(p)
                                     row.addElement(cell)
                                 table.addElement(row)
-                        
+
                         doc.spreadsheet.addElement(table)
-            
+
             # Save
             if return_string:
                 buffer = io.BytesIO()
@@ -428,7 +435,7 @@ class OutputFormatter:
                 Path(filename).parent.mkdir(parents=True, exist_ok=True)
                 doc.save(filename)
                 return filename
-            
+
         except Exception as e:
             logger.error(f"ODF generation failed: {e}")
             return None
