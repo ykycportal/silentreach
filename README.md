@@ -3,9 +3,18 @@
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Termux](https://img.shields.io/badge/Termux-Ready-brightgreen)](https://termux.com)
 
 ## Overview
 SilentReach combines agent-reach (public API access) with nodriver (undetected browser automation) for complete web intelligence without getting flagged. Invisible. Silent. Reach everywhere.
+
+**Built for Termux/Android** — run your entire scraping pipeline from your phone. No VPS needed.
+
+## Why Termux?
+- **Run anywhere**: Your phone is your server
+- **Always on**: Keep scripts running 24/7
+- **Stealth**: Mobile IPs are less likely to be flagged as datacenter
+- **Portable**: Clone the repo, install deps, start scraping
 
 ## What's Included
 - **Public Scrapers**: Reddit, YouTube, Bilibili, V2EX, RSS, Jina Reader

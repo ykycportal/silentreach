@@ -3,8 +3,16 @@
 ## Quick Install
 
 ```bash
-cd ~/silentreach
+# Termux setup
+pkg update && pkg upgrade -y
+pkg install python git chromium -y
+
+# Clone and install
+git clone https://github.com/ykycportal/silentreach.git
+cd silentreach
 pip install -e ".[all]"
+
+# Run setup
 silentreach setup
 silentreach doctor
 ```
