@@ -7,11 +7,11 @@
 [![macOS](https://img.shields.io/badge/macOS-Supported-333333?logo=apple)](https://apple.com/macos)
 [![Linux](https://img.shields.io/badge/Linux-Supported-FCC624?logo=linux)](https://linux.org)
 
-## 🌐 Cross-Platform Web Intelligence Framework
+## 🌐 Cross-Platform Ultimate Web Intelligence Framework
 
-**SilentReach** combines **agent-reach** (public APIs) + **nodriver** (undetected browser automation) into a complete web scraping and research framework.
+**SilentReach** — scraping on steroids with all kind of goodies.
 
-Built for **Termux/Android** with mobile-first features — but runs identically on **Windows, macOS, and Linux**.
+Built for **Termux/Android** — but **Windows, macOS, Linux** no problem, same difference.
 
 > One codebase. Seven export formats. Twelve platforms. Zero cloud required.
 
