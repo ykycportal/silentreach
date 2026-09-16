@@ -3,67 +3,24 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Termux](https://img.shields.io/badge/Termux-Ready-brightgreen)](https://termux.com)
-[![GitHub stars](https://img.shields.io/github/stars/ykycportal/silentreach?style=social)](https://github.com/ykycportal/silentreach)
+[![Windows](https://img.shields.io/badge/Windows-Supported-0078D6?logo=windows)](https://microsoft.com/windows)
+[![macOS](https://img.shields.io/badge/macOS-Supported-333333?logo=apple)](https://apple.com/macos)
+[![Linux](https://img.shields.io/badge/Linux-Supported-FCC624?logo=linux)](https://linux.org)
 
-## 📱 The Ultimate Android-First Web Scraper
+## 🌐 The Cross-Platform Web Intelligence Framework
 
-**SilentReach** combines agent-reach (public APIs) + nodriver (undetected browser automation) into a complete web intelligence framework — **built specifically for Termux/Android**.
+**SilentReach** combines agent-reach (public APIs) + nodriver (undetected browser automation) into a complete web scraping and research framework — **works everywhere Python runs**.
 
-Run your entire scraping pipeline from your phone. No VPS. No cloud. Just you, your mobile IP, and 12 platforms.
-
----
-
-## 🚀 Why SilentReach?
-
-| Feature | Description |
-|---------|-------------|
-| **📱 Mobile-Native** | Designed for Termux from day one |
-| **🔒 Stealth** | Mobile IPs are harder to flag than datacenters |
-| **⏰ Background Jobs** | Run 24/7 with cron, survive terminal close |
-| **🔔 Push Notifications** | Get alerts on your phone when scans complete |
-| **📥 Offline Queue** | Queue jobs when offline, auto-sync when back |
-| **🌐 Web Dashboard** | Monitor results from any browser |
-| **🔌 Plugins** | Extend with custom platform scrapers |
-| **📊 Export** | Push to Google Sheets automatically |
+Built for **Termux/Android** with mobile-first features, but fully functional on **Windows, macOS, and Linux**.
 
 ---
 
-## 📦 What's Inside
+## 🚀 Quick Start
 
-### 12 Platform Scrapers
-
-| Platform | Method | Stealth | Auth | Status |
-|----------|--------|---------|------|--------|
-| Reddit | rdt-cli + nodriver | High | Cookie | ✅ |
-| YouTube | yt-dlp | High | None | ✅ |
-| Twitter/X | twitter-cli + nodriver | Very High | Cookie | ✅ |
-| Instagram | nodriver (headful) | Very High | Cookie | ✅ |
-| LinkedIn | Jina Reader + nodriver | High | Cookie | ✅ |
-| Facebook | nodriver | Very High | Cookie | ✅ |
-| Bilibili | bili-cli + yt-dlp | Medium | None | ✅ |
-| V2EX | agent-reach | High | None | ✅ |
-| RSS | feedparser | Medium | None | ✅ |
-| Xiaohongshu | nodriver | High | Cookie | ✅ |
-| Google Search | Exa API | High | None | ✅ |
-| Any Website | Jina Reader | Medium | None | ✅ |
-
-### Core Services
-
-- **StealthEngine**: Fingerprint randomization, header rotation, timing control
-- **CookieManager**: Persistent sessions with auto-refresh
-- **NotificationCenter**: Termux:API push notifications
-- **Scheduler**: Cron-based background job management
-- **OfflineQueue**: Queue jobs when offline, process when back online
-- **PluginRegistry**: Auto-discover custom scrapers
-- **SheetsExporter**: Push results to Google Sheets
-- **WebDashboard**: Browser-based monitoring UI
-
----
-
-## ⚡ Quick Start (30 Seconds)
+### Android/Termux (Recommended — One-Click Install)
 
 ```bash
-# One-click install
+# Install everything in one command
 bash <(curl -s https://raw.githubusercontent.com/ykycportal/silentreach/main/install.sh)
 
 # Verify installation
@@ -73,362 +30,294 @@ silentreach doctor
 silentreach search "dropshipping" -p reddit,youtube --limit 10
 ```
 
-### First Time Setup
+**Why Termux?** Mobile IPs are harder to block, background jobs run 24/7, and you get push notifications directly to your phone.
+
+### Windows
+
+```cmd
+# Install Python 3.9+ from python.org
+# Then open Command Prompt or PowerShell:
+git clone https://github.com/ykycportal/silentreach.git
+cd silentreach
+pip install -e ".[all]"
+
+# Run
+silentreach search "dropshipping" -p reddit,youtube --limit 10
+```
+
+### macOS
 
 ```bash
-# 1. Install Termux:API for notifications
+# Install Homebrew if needed: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install python@3.12 git chromium
+
+git clone https://github.com/ykycportal/silentreach.git
+cd silentreach
+pip install -e ".[all]"
+
+# Run
+silentreach search "dropshipping" -p reddit,youtube --limit 10
+```
+
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo apt update
+sudo apt install python3 python3-pip git chromium-browser -y
+
+git clone https://github.com/ykycportal/silentreach.git
+cd silentreach
+pip install -e ".[all]"
+
+# Run
+silentreach search "dropshipping" -p reddit,youtube --limit 10
+```
+
+---
+
+## 📱 Termux-Exclusive Features
+
+These features only work on Android/Termux:
+
+| Feature | Description |
+|---------|-------------|
+| **🔔 Push Notifications** | Get alerts on your phone when scans complete (via Termux:API) |
+| **⏰ Persistent Background Jobs** | Cron jobs survive terminal close and reboots |
+| **📥 Offline Queue** | Queue searches while on cellular, auto-process when WiFi returns |
+| **🔋 Battery Optimization** | Built-in wake-lock and power management |
+| **📊 Web Dashboard** | Monitor from any browser on your network |
+
+### Enable Notifications (Termux Only)
+
+```bash
 pkg install termux-api
-
-# 2. Test notifications
 silentreach notify "Hello from SilentReach!"
+```
 
-# 3. Login to platforms (one-time)
-silentreach login twitter
-silentreach login instagram
+### Schedule Background Jobs (Termux Only)
 
-# 4. Schedule your first job
+```bash
+# Add daily job (survives terminal close)
 silentreach schedule add daily_monitor "0 8 * * *" \
-  --command "silentreach search 'dropshipping' -p reddit,youtube,twitter"
+  --command "silentreach search 'dropshipping' -p reddit,youtube"
+
+# Jobs run automatically even when terminal is closed
+silentreach schedule list
 ```
 
 ---
 
-## 🎯 Use Cases
+## 🎯 What Works Everywhere
 
-### 1. Daily Monitoring
-```bash
-# Set up daily dropshipping research
-silentreach schedule add dropshipping_daily "0 8 * * *" \
-  --command "silentreach search 'dropshipping' -p reddit,youtube,twitter" \
-  --description "Daily market research"
+All platforms get these features:
 
-# Run now to test
-silentreach schedule run dropshipping_daily
 ```
-
-### 2. Competitor Tracking
-```bash
-# Track competitor mentions every 6 hours
-silentreach schedule add competitor_watch "0 */6 * * *" \
-  --command "silentreach search 'shopify stores' -p twitter,reddit"
-```
-
-### 3. Offline-First Workflow
-```bash
-# Queue searches while on cellular
-silentreach queue add reddit "ecommerce trends" --priority 1
-silentreach queue add youtube "product reviews" --priority 2
-
-# Process when WiFi available
-silentreach queue process
-```
-
-### 4. Web Dashboard
-```bash
-# Start monitoring UI
-silentreach dashboard
-
-# Open in browser: http://localhost:5000
-# Auto-refreshes every 30 seconds
+✓ 12 Platform Scrapers (Reddit, YouTube, Twitter, Instagram, etc.)
+✓ 7 Export Formats (JSON, MD, CSV, TXT, PDF, Excel, ODS)
+✓ Stealth Browser Automation (nodriver)
+✓ Cookie Management & Session Persistence
+✓ Rate Limiting & Exponential Backoff
+✓ Plugin System for Custom Platforms
+✓ Google Sheets Export
+✓ Web Dashboard (port 5000)
 ```
 
 ---
 
-## 📋 Complete CLI Reference
+## 📦 Platform Support Matrix
 
-### Search Commands
+| Feature | Android/Termux | Windows | macOS | Linux |
+|---------|---------------|---------|-------|-------|
+| **Core Scrapers** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
+| **Output Formats** | ✅ 7 formats | ✅ 7 formats | ✅ 7 formats | ✅ 7 formats |
+| **Stealth Browser** | ✅ nodriver | ✅ nodriver | ✅ nodriver | ✅ nodriver |
+| **Notifications** | ✅ Termux:API | ❌ Skip | ❌ Skip | ❌ Skip |
+| **Background Cron** | ✅ Native | ⚠️ Task Scheduler | ⚠️ launchd | ✅ cron/systemd |
+| **Offline Queue** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
+| **Web Dashboard** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
+| **One-Click Install** | ✅ `install.sh` | ⚠️ Manual | ⚠️ Manual | ⚠️ Manual |
+
+---
+
+## 📋 CLI Commands
+
+### Search
+
 ```bash
-# Search across platforms
+# Basic search
 silentreach search "topic" -p reddit,youtube,twitter
+
+# All platforms
 silentreach search "topic" -p all --limit 50
 
-# Save results
-silentreach search "topic" -p all -f json -o results.json
-silentreach search "topic" -p all -f markdown -o report.md
+# Save to specific format
+silentreach search "topic" -p all -f pdf -o report.pdf
+silentreach search "topic" -p all -f xlsx -o data.xlsx
+silentreach search "topic" -p all -f json -o data.json
 
-### Output Formats
-
-SilentReach supports **7 export formats** for maximum flexibility:
-
-| Format | Extension | Library | Use Case |
-|--------|-----------|---------|----------|
-| **JSON** | `.json` | stdlib | API integration, programmatic parsing |
-| **Markdown** | `.md` | stdlib | Human-readable reports (default) |
-| **CSV** | `.csv` | stdlib | Import to Excel, Google Sheets, any spreadsheet |
-| **TXT** | `.txt` | stdlib | Plain text, logs, quick viewing |
-| **PDF** | `.pdf` | reportlab | Professional reports, email attachments, printing |
-| **Excel** | `.xlsx` | openpyxl | Advanced analysis, charts, Excel formulas |
-| **ODS** | `.ods` | odfpy | LibreOffice, open document standard |
-
-### Format Examples
-
-```bash
-# JSON - for APIs and scripts
-silentreach search "dropshipping" -p all -f json -o data.json
-
-# Markdown - readable report
-silentreach search "dropshipping" -p all -f md -o report.md
-
-# CSV - spreadsheet compatible
-silentreach search "dropshipping" -p reddit,youtube -f csv -o results.csv
-
-# PDF - email attachment, print-ready
-silentreach search "competitors" -p all -f pdf -o competitors_report.pdf
-
-# Excel - data analysis
-silentreach search "trends" -p all -f xlsx -o trends_analysis.xlsx
-
-# LibreOffice - open format
-silentreach search "research" -p all -f ods -o research.ods
-
-# Auto-detect from extension (no -f flag needed)
-silentreach search "topic" -o myreport.pdf
-silentreach search "topic" -o myreport.xlsx
-```
+# Auto-detect format from extension
+silentreach search "topic" -o output.pdf
 ```
 
 ### Intelligence Reports
+
 ```bash
 # Quick scan (3 platforms)
 silentreach intel "topic" --depth quick
 
-# Full analysis (6 platforms)
+# Full analysis (all platforms)
 silentreach intel "topic" --depth full
 ```
 
-### Scheduler
-```bash
-# List jobs
-silentreach schedule list
+### Scheduler (Cross-Platform)
 
+```bash
 # Add job
 silentreach schedule add my_job "0 8 * * *" \
   --command "silentreach search 'topic' -p all"
 
-# Remove job
-silentreach schedule remove my_job
-
-# Run now
+# List, run, remove
+silentreach schedule list
 silentreach schedule run my_job
-```
-
-### Notifications
-```bash
-# Send test notification
-silentreach notify "Test message"
-
-# Check Termux:API status
-silentreach doctor  # Shows API availability
-```
-
-### Offline Queue
-```bash
-# Add to queue
-silentreach queue add reddit "products"
-
-# View queue status
-silentreach queue show
-
-# Process next job
-silentreach queue process
+silentreach schedule remove my_job
 ```
 
 ### Dashboard
+
 ```bash
 # Start web UI
 silentreach dashboard
 
-# Custom port
-silentreach dashboard --port 8080
-
-# Run in background
-silentreach dashboard --background
-```
-
-### Presets
-```bash
-# View ready-made templates
-silentreach presets
-
-# Use a preset
-silentreach schedule add $(silentreach presets | grep dropshipping | head -1) \
-  --cron "0 8 * * *" \
-  --command "silentreach search 'dropshipping' -p reddit,youtube"
+# Access at http://localhost:5000
 ```
 
 ---
 
-## 🔧 Python API
+## 📊 Output Formats
 
-```python
-import asyncio
-from scrapers.reddit import RedditScraper
-from scrapers.youtube import YouTubeScraper
-from services.notifications import notify_success
-from services.scheduler import get_scheduler
+SilentReach exports to **7 formats**:
 
-async def research():
-    # Multi-platform search
-    results = {}
-    
-    reddit = RedditScraper()
-    results["reddit"] = await reddit.search("dropshipping", limit=20)
-    
-    youtube = YouTubeScraper()
-    results["youtube"] = await youtube.search("dropshipping tutorial", limit=20)
-    
-    # Send notification when done
-    total = sum(len(r.get("posts", r.get("videos", []))) for r in results.values())
-    notify_success("Research Complete", f"Found {total} results")
-    
-    return results
+| Format | Extension | Use Case |
+|--------|-----------|----------|
+| JSON | `.json` | API integration, scripts |
+| Markdown | `.md` | Readable reports (default) |
+| CSV | `.csv` | Spreadsheet import |
+| TXT | `.txt` | Plain text, logs |
+| **PDF** | `.pdf` | Email attachments, printing |
+| **Excel** | `.xlsx` | Data analysis |
+| **ODS** | `.ods` | LibreOffice |
 
-# Schedule daily
-scheduler = get_scheduler()
-scheduler.add_job(
-    name="daily_research",
-    cron_expr="0 8 * * *",
-    command="python my_script.py"
-)
+### Example: Send PDF Report via Email
 
-asyncio.run(research())
+```bash
+# Generate report
+silentreach search "competitors" -p all -f pdf -o report.pdf
+
+# Email (Linux/macOS/Windows with proper mail setup)
+mailto:?subject="Research Report"&body=Check%20attached...&attachment=report.pdf
 ```
 
 ---
 
-## 🌐 Plugin System
+## 🔧 Installation Details
 
-Create custom scrapers:
+### Minimum Requirements
+
+- Python 3.9+
+- Git
+- Chromium/Chrome browser (for nodriver)
+
+### Dependencies
 
 ```bash
-# Generate template
-silentreach plugins create my_platform
+# Core (all platforms)
+pip install -e ".[all]"
 
-# Edit the generated file
-nano ~/.silentreach/plugins/my_platform.py
+# Extra libraries for full features
+pip install reportlab openpyxl odfpy gspread google-auth redis
 ```
 
-```python
-# ~/.silentreach/plugins/my_platform.py
-from scrapers.base import BaseScraper
+### System Packages (Linux/macOS/Windows)
 
-class MyPlatformScraper(BaseScraper):
-    platform = "myplatform"
-    stealth_level = "high"
-    
-    async def search(self, query, limit=20):
-        # Your implementation
-        return {"query": query, "results": [...], "total": len([...])}
-```
-
-Auto-discovered on next run:
 ```bash
-silentreach presets  # Shows your new platform
-```
+# Ubuntu/Debian
+sudo apt install python3 python3-pip git chromium-browser
 
----
+# macOS
+brew install python@3.12 git chromium
 
-## 📊 Data Storage
-
-All data stays local on your device:
-
-```
-~/.silentreach/
-├── config.yaml              # Configuration
-├── cookies/                 # Browser sessions (encrypted locally)
-│   ├── twitter.json
-│   ├── instagram.json
-│   └── ...
-├── jobs/                    # Scheduled job scripts
-├── queue/                   # Offline queue
-│   ├── pending/
-│   ├── running/
-│   ├── completed/
-│   └── failed/
-├── results/                 # Saved searches
-│   ├── reddit/
-│   ├── youtube/
-│   └── ...
-├── logs/                    # Application logs
-└── plugins/                 # Custom scrapers
+# Windows
+# Download Chrome from google.com/chrome
+# Python from python.org
 ```
 
 ---
 
 ## 🔒 Stealth Features
 
-### Multi-Layer Anti-Detection
 - **Fingerprint Randomization**: Rotates User-Agent, viewport, platform
 - **Header Rotation**: Realistic browser headers with natural variation
-- **Timing Control**: Platform-specific delays (Reddit: 2-4s, Instagram: 4-6s)
+- **Timing Control**: Platform-specific delays
 - **Cookie Persistence**: Reuse real browser sessions
 - **Rate Limiting**: Exponential backoff on 429s
 
-### Mobile IP Advantage
-- Mobile carriers use CGNAT — IPs shared with thousands of users
-- Less likely to be flagged as "datacenter" vs VPS/proxy IPs
-- Geographic diversity changes naturally as you move
+### Mobile IP Advantage (Termux Only)
+
+Mobile carriers use CGNAT — IPs shared with thousands of users. Much harder to flag as "datacenter" vs VPS/proxy IPs.
 
 ---
 
-## ⚙️ Configuration
+## 🌐 Plugin System
 
-```yaml
-# ~/.silentreach/config.yaml
-global:
-  headless: true           # False for login flows
-  default_delay: 2.0       # Seconds between requests
-  max_retries: 3
-  timeout: 30
+Extend with custom scrapers:
 
-rate_limit:
-  enabled: true
-  default_rpm: 30
+```bash
+# Create template
+silentreach plugins create my_platform
 
-notifications:
-  enabled: true
-  termux_api: true
+# Edit and use
+nano ~/.silentreach/plugins/my_platform.py
+```
 
-queue:
-  auto_process: true
-  max_retries: 3
-  retry_delay_minutes: 5
+---
 
-cookies:
-  storage_path: ~/.silentreach/cookies/
-  auto_refresh: true
-  refresh_interval_hours: 12
+## 📁 Data Storage
+
+All data stays local:
+
+```
+~/.silentreach/
+├── config.yaml
+├── cookies/
+├── jobs/
+├── queue/
+├── results/
+├── logs/
+└── plugins/
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Termux:API Not Working
-```bash
-pkg install termux-api
-silentreach notify "test"
-```
-
 ### nodriver Chrome Error
+
 ```bash
-pkg install chromium
-chromium --version
+# Linux
+sudo apt install chromium-browser
+
+# macOS
+brew install --cask chromium
+
+# Windows
+# Download Chrome from google.com/chrome
 ```
 
-### YouTube/Network Issues
-```bash
-# DNS check
-nslookup youtube.com
+### Agent-Reach Issues
 
-# Try with proxy if blocked
-export HTTP_PROXY=http://your-proxy:port
-```
-
-### Clear Cookies & Re-login
 ```bash
-rm ~/.silentreach/cookies/*.json
-silentreach login twitter
+# Reinstall from GitHub (PyPI version is outdated)
+pip install "agent-reach @ git+https://github.com/Panniantong/agent-reach.git@v1.5.0"
 ```
 
 ---
@@ -438,8 +327,8 @@ silentreach login twitter
 - **Quick Reference**: `QUICKREF.md`
 - **Termux Setup**: `TERMUX.md`
 - **CLI Commands**: `CLI.md`
+- **Architecture**: `ARCHITECTURE.md`
 - **Examples**: `examples/`
-- **API Docs**: `docs/api/`
 
 ---
 
@@ -460,4 +349,4 @@ MIT License — Use responsibly. Stay silent, reach everything.
 
 ---
 
-**Built for Android by [y Kycportal](https://github.com/ykycportal)**
+**Built for everyone, optimized for Android** — [y Kycportal](https://github.com/ykycportal)
