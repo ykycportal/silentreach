@@ -7,7 +7,7 @@ setup(
     name="silentreach",
     version="1.0.0",
     author="y Kycportal",
-    description="Ultimate undetected web scraping framework combining agent-reach and nodriver",
+    description="Cross-platform web intelligence framework combining agent-reach + nodriver — optimized for Termux/Android with full support for Windows, macOS, and Linux.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ykycportal/silentreach",

@@ -2,16 +2,18 @@
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Termux](https://img.shields.io/badge/Termux-Ready-brightgreen)](https://termux.com)
+[![Termux](https://img.shields.io/badge/Termux-Optimized-brightgreen)](https://termux.com)
 [![Windows](https://img.shields.io/badge/Windows-Supported-0078D6?logo=windows)](https://microsoft.com/windows)
 [![macOS](https://img.shields.io/badge/macOS-Supported-333333?logo=apple)](https://apple.com/macos)
 [![Linux](https://img.shields.io/badge/Linux-Supported-FCC624?logo=linux)](https://linux.org)
 
-## 🌐 The Cross-Platform Web Intelligence Framework
+## 🌐 Cross-Platform Web Intelligence Framework
 
-**SilentReach** combines agent-reach (public APIs) + nodriver (undetected browser automation) into a complete web scraping and research framework — **works everywhere Python runs**.
+**SilentReach** combines **agent-reach** (public APIs) + **nodriver** (undetected browser automation) into a complete web scraping and research framework.
 
-Built for **Termux/Android** with mobile-first features, but fully functional on **Windows, macOS, and Linux**.
+Built for **Termux/Android** with mobile-first features — but runs identically on **Windows, macOS, and Linux**.
+
+> One codebase. Seven export formats. Twelve platforms. Zero cloud required.
 
 ---
 

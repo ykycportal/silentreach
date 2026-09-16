@@ -1,6 +1,6 @@
 # SilentReach CLI Reference
 
-Complete command reference for SilentReach.
+Complete command reference for SilentReach — works on **all platforms** (Termux, Windows, macOS, Linux).
 
 ---
 

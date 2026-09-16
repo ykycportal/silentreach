@@ -1,6 +1,8 @@
 # SilentReach Architecture
 
-Technical documentation for SilentReach framework.
+Technical documentation for SilentReach framework — **cross-platform** Python implementation.
+
+> Core logic is 100% platform-agnostic. Only Termux-specific services (notifications, wake-lock) vary by OS.
 
 ---
 

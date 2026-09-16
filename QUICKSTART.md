@@ -1,94 +1,67 @@
-# SilentReach
+# SilentReach — Quick Start
 
-## Quick Install
+## Install (Pick Your Platform)
 
+### Android / Termux
 ```bash
-# Termux setup
-pkg update && pkg upgrade -y
-pkg install python git chromium -y
-
-# Clone and install
-git clone https://github.com/ykycportal/silentreach.git
-cd silentreach
-pip install -e ".[all]"
-
-# Run setup
-silentreach setup
+bash <(curl -s https://raw.githubusercontent.com/ykycportal/silentreach/main/install.sh)
 silentreach doctor
 ```
 
-## Basic Usage
+### Windows
+```powershell
+git clone https://github.com/ykycportal/silentreach.git
+cd silentreach
+pip install -e ".[all]"
+```
+
+### macOS / Linux
+```bash
+brew install python git chromium  # macOS
+# OR: sudo apt install python3 git chromium-browser  # Linux
+git clone https://github.com/ykycportal/silentreach.git
+cd silentreach
+pip install -e ".[all]"
+```
+
+---
+
+## Run Your First Search
 
 ```bash
-# Search Reddit
-silentreach search "dropshipping tips" -p reddit
+# Cross-platform — same command everywhere
+silentreach search "dropshipping" -p reddit,youtube --limit 10
 
-# Search all platforms
-silentreach search "AI tools" -p all --limit 20
+# Save as PDF (email-ready)
+silentreach search "products" -p all -f pdf -o report.pdf
 
-# Full intelligence report
-silentreach intel "dropshipping 2024" --depth full
-
-# Save results to file
-silentreach search "shopify" -p reddit,youtube -o results.json
+# Save as Excel (data analysis)
+silentreach search "trends" -p reddit,youtube,twitter -f xlsx -o data.xlsx
 ```
 
-## Python API
+---
 
-```python
-import asyncio
-from scrapers.reddit import RedditScraper
-from scrapers.youtube import YouTubeScraper
-from services.output_fmt import OutputFormatter
+## What You Get
 
-async def main():
-    # Reddit search
-    reddit = RedditScraper()
-    results = await reddit.search("dropshipping", limit=10)
-    
-    # YouTube search
-    youtube = YouTubeScraper()
-    videos = await youtube.search("dropshipping tutorial", limit=10)
-    
-    # Combine and save
-    report = OutputFormatter.to_markdown({
-        "reddit": results,
-        "youtube": videos,
-    }, "Research Report")
-    
-    print(report)
+- **12 platforms**: Reddit, YouTube, Twitter/X, Instagram, LinkedIn, Facebook, Bilibili, V2EX, RSS, Xiaohongshu, Google Search, Any Website
+- **7 export formats**: JSON, Markdown, CSV, TXT, PDF, Excel (.xlsx), LibreOffice (.ods)
+- **Stealth**: Mobile-quality IPs, fingerprint randomization, realistic timing
+- **Offline queue**: Queue searches, process when online
+- **Web dashboard**: Monitor from any browser at http://localhost:5000
 
-asyncio.run(main())
-```
+---
 
-## Platforms
+## Termux Extras (Android Only)
 
-| Platform | Method | Auth Required |
-|----------|--------|---------------|
-| Reddit | agent-reach + nodriver | Yes |
-| YouTube | agent-reach + yt-dlp | No |
-| Twitter/X | nodriver | Yes |
-| Instagram | nodriver | Yes |
-| LinkedIn | nodriver + agent-reach | Yes |
-| Bilibili | agent-reach + yt-dlp | No |
-| V2EX | agent-reach | No |
-| RSS | agent-reach | No |
-
-## Stealth Features
-
-- Randomized user agents and headers
-- Rate limiting with exponential backoff
-- Cookie persistence for authenticated sessions
-- Platform-specific timing delays
-- Proxy rotation support
-
-## Configuration
-
-Copy and customize:
 ```bash
-cp config/settings.example.yaml ~/.silentreach/config.yaml
+# Push notifications to your phone
+pkg install termux-api
+silentreach notify "Scan complete!"
+
+# Background jobs that survive reboots
+silentreach schedule add daily "0 8 * * *" --command "silentreach search 'topic' -p all"
 ```
 
-## License
+---
 
-MIT - Use responsibly.
+GitHub: https://github.com/ykycportal/silentreach
