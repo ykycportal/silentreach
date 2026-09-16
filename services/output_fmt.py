@@ -380,14 +380,8 @@ class OutputFormatter:
             from odf.opendocument import OpenDocumentSpreadsheet
             from odf.table import Table, TableRow, TableCell
             from odf.text import P
-            from odf.style import Style, TextProperties, TableProperties, ParagraphProperties
-            from odf.namespaces import STYLE
 
             doc = OpenDocumentSpreadsheet()
-
-            # Create default styles
-            style = Style()
-            doc.styles.addElement(style)
 
             # Process each platform
             if isinstance(data, dict):
