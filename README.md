@@ -16,6 +16,54 @@ SilentReach combines agent-reach (public API access) with nodriver (undetected b
 - **Stealth**: Mobile IPs are less likely to be flagged as datacenter
 - **Portable**: Clone the repo, install deps, start scraping
 
+## Android-First Features ✨
+
+| Feature | Command | Description |
+|---------|---------|-------------|
+| 🔔 **Notifications** | `silentreach notify "message"` | Push notifications via Termux:API |
+| ⏰ **Scheduler** | `silentreach schedule add daily 0 8 * * * --command '...'` | Cron-based background jobs |
+| 📥 **Offline Queue** | `silentreach queue add reddit "topic"` | Queue jobs when offline, sync when back |
+| 🌐 **Web Dashboard** | `silentreach dashboard` | Monitor results from phone browser |
+| 📊 **Sheets Export** | `export.py` | Push results to Google Sheets |
+| 🔌 **Plugins** | `plugins.py` | Auto-discover custom scrapers |
+| 📱 **One-Click Install** | `bash install.sh` | Automated Termux setup |
+| 🎯 **Presets** | `silentreach presets` | Ready-to-use monitoring templates |
+
+### Example Workflow
+
+```bash
+# 1. Install (one-time)
+bash <(curl -s https://raw.githubusercontent.com/ykycportal/silentreach/main/install.sh)
+
+# 2. Enable notifications
+pkg install termux-api
+silentreach notify "SilentReach ready!"
+
+# 3. Schedule daily monitoring
+silentreach schedule add dropshipping_daily 0 8 * * * \
+  --command "silentreach search 'dropshipping' -p reddit,youtube,twitter"
+
+# 4. Queue searches when offline
+silentreach queue add reddit "ecommerce trends"
+silentreach queue add youtube "product reviews"
+
+# 5. Monitor via web dashboard
+silentreach dashboard &
+# Open http://localhost:5000 in your browser
+```
+
+### Background Operations
+
+```bash
+# Run scheduler in background (stays active after terminal closes)
+termux-wake-lock
+nohup silentreach schedule run daily_monitor > /dev/null 2>&1 &
+
+# Or use cron (persistent across reboots)
+crontab -e
+# Add: 0 8 * * * cd ~/silentreach && silentreach search "topic" -p all >> logs/cron.log
+```
+
 ## What's Included
 - **Public Scrapers**: Reddit, YouTube, Bilibili, V2EX, RSS, Jina Reader
 - **Authenticated Scrapers**: Twitter/X, Instagram, LinkedIn, Facebook, Xiaohongshu
