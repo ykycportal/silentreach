@@ -1,202 +1,423 @@
 # SilentReach
-# The ultimate undetected web intelligence framework — agent-reach + nodriver combined
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Termux](https://img.shields.io/badge/Termux-Ready-brightgreen)](https://termux.com)
+[![GitHub stars](https://img.shields.io/github/stars/ykycportal/silentreach?style=social)](https://github.com/ykycportal/silentreach)
 
-## Overview
-SilentReach combines agent-reach (public API access) with nodriver (undetected browser automation) for complete web intelligence without getting flagged. Invisible. Silent. Reach everywhere.
+## 📱 The Ultimate Android-First Web Scraper
 
-**Built for Termux/Android** — run your entire scraping pipeline from your phone. No VPS needed.
+**SilentReach** combines agent-reach (public APIs) + nodriver (undetected browser automation) into a complete web intelligence framework — **built specifically for Termux/Android**.
 
-## Why Termux?
-- **Run anywhere**: Your phone is your server
-- **Always on**: Keep scripts running 24/7
-- **Stealth**: Mobile IPs are less likely to be flagged as datacenter
-- **Portable**: Clone the repo, install deps, start scraping
+Run your entire scraping pipeline from your phone. No VPS. No cloud. Just you, your mobile IP, and 12 platforms.
 
-## Android-First Features ✨
+---
 
-| Feature | Command | Description |
-|---------|---------|-------------|
-| 🔔 **Notifications** | `silentreach notify "message"` | Push notifications via Termux:API |
-| ⏰ **Scheduler** | `silentreach schedule add daily 0 8 * * * --command '...'` | Cron-based background jobs |
-| 📥 **Offline Queue** | `silentreach queue add reddit "topic"` | Queue jobs when offline, sync when back |
-| 🌐 **Web Dashboard** | `silentreach dashboard` | Monitor results from phone browser |
-| 📊 **Sheets Export** | `export.py` | Push results to Google Sheets |
-| 🔌 **Plugins** | `plugins.py` | Auto-discover custom scrapers |
-| 📱 **One-Click Install** | `bash install.sh` | Automated Termux setup |
-| 🎯 **Presets** | `silentreach presets` | Ready-to-use monitoring templates |
+## 🚀 Why SilentReach?
 
-### Example Workflow
+| Feature | Description |
+|---------|-------------|
+| **📱 Mobile-Native** | Designed for Termux from day one |
+| **🔒 Stealth** | Mobile IPs are harder to flag than datacenters |
+| **⏰ Background Jobs** | Run 24/7 with cron, survive terminal close |
+| **🔔 Push Notifications** | Get alerts on your phone when scans complete |
+| **📥 Offline Queue** | Queue jobs when offline, auto-sync when back |
+| **🌐 Web Dashboard** | Monitor results from any browser |
+| **🔌 Plugins** | Extend with custom platform scrapers |
+| **📊 Export** | Push to Google Sheets automatically |
+
+---
+
+## 📦 What's Inside
+
+### 12 Platform Scrapers
+
+| Platform | Method | Stealth | Auth | Status |
+|----------|--------|---------|------|--------|
+| Reddit | rdt-cli + nodriver | High | Cookie | ✅ |
+| YouTube | yt-dlp | High | None | ✅ |
+| Twitter/X | twitter-cli + nodriver | Very High | Cookie | ✅ |
+| Instagram | nodriver (headful) | Very High | Cookie | ✅ |
+| LinkedIn | Jina Reader + nodriver | High | Cookie | ✅ |
+| Facebook | nodriver | Very High | Cookie | ✅ |
+| Bilibili | bili-cli + yt-dlp | Medium | None | ✅ |
+| V2EX | agent-reach | High | None | ✅ |
+| RSS | feedparser | Medium | None | ✅ |
+| Xiaohongshu | nodriver | High | Cookie | ✅ |
+| Google Search | Exa API | High | None | ✅ |
+| Any Website | Jina Reader | Medium | None | ✅ |
+
+### Core Services
+
+- **StealthEngine**: Fingerprint randomization, header rotation, timing control
+- **CookieManager**: Persistent sessions with auto-refresh
+- **NotificationCenter**: Termux:API push notifications
+- **Scheduler**: Cron-based background job management
+- **OfflineQueue**: Queue jobs when offline, process when back online
+- **PluginRegistry**: Auto-discover custom scrapers
+- **SheetsExporter**: Push results to Google Sheets
+- **WebDashboard**: Browser-based monitoring UI
+
+---
+
+## ⚡ Quick Start (30 Seconds)
 
 ```bash
-# 1. Install (one-time)
+# One-click install
 bash <(curl -s https://raw.githubusercontent.com/ykycportal/silentreach/main/install.sh)
 
-# 2. Enable notifications
+# Verify installation
+silentreach doctor
+
+# Run your first search
+silentreach search "dropshipping" -p reddit,youtube --limit 10
+```
+
+### First Time Setup
+
+```bash
+# 1. Install Termux:API for notifications
 pkg install termux-api
-silentreach notify "SilentReach ready!"
 
-# 3. Schedule daily monitoring
-silentreach schedule add dropshipping_daily 0 8 * * * \
+# 2. Test notifications
+silentreach notify "Hello from SilentReach!"
+
+# 3. Login to platforms (one-time)
+silentreach login twitter
+silentreach login instagram
+
+# 4. Schedule your first job
+silentreach schedule add daily_monitor "0 8 * * *" \
   --command "silentreach search 'dropshipping' -p reddit,youtube,twitter"
-
-# 4. Queue searches when offline
-silentreach queue add reddit "ecommerce trends"
-silentreach queue add youtube "product reviews"
-
-# 5. Monitor via web dashboard
-silentreach dashboard &
-# Open http://localhost:5000 in your browser
 ```
 
-### Background Operations
+---
 
+## 🎯 Use Cases
+
+### 1. Daily Monitoring
 ```bash
-# Run scheduler in background (stays active after terminal closes)
-termux-wake-lock
-nohup silentreach schedule run daily_monitor > /dev/null 2>&1 &
+# Set up daily dropshipping research
+silentreach schedule add dropshipping_daily "0 8 * * *" \
+  --command "silentreach search 'dropshipping' -p reddit,youtube,twitter" \
+  --description "Daily market research"
 
-# Or use cron (persistent across reboots)
-crontab -e
-# Add: 0 8 * * * cd ~/silentreach && silentreach search "topic" -p all >> logs/cron.log
+# Run now to test
+silentreach schedule run dropshipping_daily
 ```
 
-## What's Included
-- **Public Scrapers**: Reddit, YouTube, Bilibili, V2EX, RSS, Jina Reader
-- **Authenticated Scrapers**: Twitter/X, Instagram, LinkedIn, Facebook, Xiaohongshu
-- **Stealth Engine**: Fingerprint randomization, header rotation, timing control
-- **Cookie Manager**: Persistent sessions, auto-refresh, secure storage
-- **Output Formats**: JSON, Markdown, CSV, native Python objects
-
-## Quick Start
-
+### 2. Competitor Tracking
 ```bash
-# Install
-pip install -e ".[all]"
-
-# Run doctor check
-python scripts/silentreach.py doctor
-
-# Search a topic across platforms
-python scripts/silentreach.py run --platform reddit --query "dropshipping"
-
-# Full intelligence report
-python scripts/silentreach.py intel --topic "AI tools" --depth full
+# Track competitor mentions every 6 hours
+silentreach schedule add competitor_watch "0 */6 * * *" \
+  --command "silentreach search 'shopify stores' -p twitter,reddit"
 ```
 
-## Platforms
+### 3. Offline-First Workflow
+```bash
+# Queue searches while on cellular
+silentreach queue add reddit "ecommerce trends" --priority 1
+silentreach queue add youtube "product reviews" --priority 2
 
-| Platform | Agent-Reach | Nodriver | Stealth | Auth Required |
-|----------|-------------|----------|---------|---------------|
-| Reddit | ✅ | ✅ | High | Cookie/Session |
-| YouTube | ✅ | ✅ | High | None |
-| Twitter/X | ✅ | ✅ | Very High | Cookie |
-| Instagram | ❌ | ✅ | Very High | Cookie/Session |
-| LinkedIn | ✅ | ✅ | High | Cookie |
-| Facebook | ❌ | ✅ | Very High | Cookie/Session |
-| Bilibili | ✅ | ✅ | Medium | None |
-| V2EX | ✅ | ✅ | High | None |
-| RSS | ✅ | ✅ | Medium | None |
-| Xiaohongshu | ✅ | ✅ | High | Cookie/Session |
-
-## Architecture
-
-```
-silentreach/
-├── scrapers/           # Platform-specific implementations
-│   ├── base.py         # Abstract scraper interface
-│   ├── reddit.py       # Reddit scraper (public + auth)
-│   ├── youtube.py      # YouTube scraper
-│   ├── twitter.py      # Twitter/X scraper
-│   ├── instagram.py    # Instagram scraper
-│   ├── linkedin.py     # LinkedIn scraper
-│   ├── facebook.py     # Facebook scraper
-│   └── bilibili.py     # Bilibili scraper
-├── services/           # Core services
-│   ├── stealth_engine.py  # Anti-detection logic
-│   ├── cookie_mgr.py      # Session management
-│   ├── rate_limiter.py    # Request throttling
-│   └── output_fmt.py      # Response formatting
-├── utils/              # Utilities
-│   ├── fingerprint.py     # Browser fingerprint randomization
-│   ├── headers.py         # Realistic header generation
-│   ├── proxies.py         # Proxy rotation
-│   └── logging.py         # Structured logging
-├── config/             # Configuration
-│   ├── settings.yaml      # Main config
-│   ├── platforms/         # Per-platform settings
-│   └── secrets.env        # API keys (gitignored)
-├── scripts/            # CLI tools
-│   ├── silentreach.py     # Main CLI
-│   └── batch_run.py       # Batch operations
-├── examples/           # Usage examples
-└── tests/              # Test suite
+# Process when WiFi available
+silentreach queue process
 ```
 
-## Stealth Features
+### 4. Web Dashboard
+```bash
+# Start monitoring UI
+silentreach dashboard
 
-### 1. Multi-Layer Anti-Detection
-- **Browser Fingerprint Randomization**: Vary canvas, WebGL, audio context
-- **Header Rotation**: Randomize User-Agent, Accept-Language, etc.
-- **Timing Randomization**: Human-like delays between actions
-- **Cookie Persistence**: Reuse real browser sessions
-- **Proxy Rotation**: Residential proxies for sensitive targets
+# Open in browser: http://localhost:5000
+# Auto-refreshes every 30 seconds
+```
 
-### 2. Platform-Specific Evasion
-- **Twitter**: Uses OpenCLI/browser session reuse
-- **Reddit**: Primary via OpenCLI, fallback to rdt-cli
-- **Instagram**: Desktop-only via OpenCLI (real browser session)
-- **LinkedIn**: Public pages via Jina, authenticated via browser
+---
 
-### 3. Rate Limiting & Scheduling
-- Exponential backoff on 429s
-- Configurable delay between requests
-- Respectful cron-style scheduling
+## 📋 Complete CLI Reference
 
-## Advanced Usage
+### Search Commands
+```bash
+# Search across platforms
+silentreach search "topic" -p reddit,youtube,twitter
+silentreach search "topic" -p all --limit 50
 
-### Custom Scraper Plugin
+# Save results
+silentreach search "topic" -p all -f json -o results.json
+silentreach search "topic" -p all -f markdown -o report.md
+```
+
+### Intelligence Reports
+```bash
+# Quick scan (3 platforms)
+silentreach intel "topic" --depth quick
+
+# Full analysis (6 platforms)
+silentreach intel "topic" --depth full
+```
+
+### Scheduler
+```bash
+# List jobs
+silentreach schedule list
+
+# Add job
+silentreach schedule add my_job "0 8 * * *" \
+  --command "silentreach search 'topic' -p all"
+
+# Remove job
+silentreach schedule remove my_job
+
+# Run now
+silentreach schedule run my_job
+```
+
+### Notifications
+```bash
+# Send test notification
+silentreach notify "Test message"
+
+# Check Termux:API status
+silentreach doctor  # Shows API availability
+```
+
+### Offline Queue
+```bash
+# Add to queue
+silentreach queue add reddit "products"
+
+# View queue status
+silentreach queue show
+
+# Process next job
+silentreach queue process
+```
+
+### Dashboard
+```bash
+# Start web UI
+silentreach dashboard
+
+# Custom port
+silentreach dashboard --port 8080
+
+# Run in background
+silentreach dashboard --background
+```
+
+### Presets
+```bash
+# View ready-made templates
+silentreach presets
+
+# Use a preset
+silentreach schedule add $(silentreach presets | grep dropshipping | head -1) \
+  --cron "0 8 * * *" \
+  --command "silentreach search 'dropshipping' -p reddit,youtube"
+```
+
+---
+
+## 🔧 Python API
+
 ```python
-from silentreach import BaseScraper, run_async
+import asyncio
+from scrapers.reddit import RedditScraper
+from scrapers.youtube import YouTubeScraper
+from services.notifications import notify_success
+from services.scheduler import get_scheduler
 
-class MyScraper(BaseScraper):
-    platform = "myplatform"
+async def research():
+    # Multi-platform search
+    results = {}
     
-    async def search(self, query: str, limit: int = 20):
-        # Your implementation
-        return results
+    reddit = RedditScraper()
+    results["reddit"] = await reddit.search("dropshipping", limit=20)
+    
+    youtube = YouTubeScraper()
+    results["youtube"] = await youtube.search("dropshipping tutorial", limit=20)
+    
+    # Send notification when done
+    total = sum(len(r.get("posts", r.get("videos", []))) for r in results.values())
+    notify_success("Research Complete", f"Found {total} results")
+    
+    return results
 
-# Register and use
-run_async(MyScraper().search("topic"))
+# Schedule daily
+scheduler = get_scheduler()
+scheduler.add_job(
+    name="daily_research",
+    cron_expr="0 8 * * *",
+    command="python my_script.py"
+)
+
+asyncio.run(research())
 ```
 
-### Multi-Platform Intel Report
-```python
-from silentreach import IntelReporter
+---
 
-report = IntelReporter()
-report.add("reddit", "dropshipping", limit=50)
-report.add("twitter", "dropshipping", limit=30)
-report.add("youtube", "dropshipping tutorial", limit=20)
+## 🌐 Plugin System
 
-results = await report.run()
-report.to_markdown("report.md")
-```
-
-## Installation
+Create custom scrapers:
 
 ```bash
-# Clone and install
+# Generate template
+silentreach plugins create my_platform
+
+# Edit the generated file
+nano ~/.silentreach/plugins/my_platform.py
+```
+
+```python
+# ~/.silentreach/plugins/my_platform.py
+from scrapers.base import BaseScraper
+
+class MyPlatformScraper(BaseScraper):
+    platform = "myplatform"
+    stealth_level = "high"
+    
+    async def search(self, query, limit=20):
+        # Your implementation
+        return {"query": query, "results": [...], "total": len([...])}
+```
+
+Auto-discovered on next run:
+```bash
+silentreach presets  # Shows your new platform
+```
+
+---
+
+## 📊 Data Storage
+
+All data stays local on your device:
+
+```
+~/.silentreach/
+├── config.yaml              # Configuration
+├── cookies/                 # Browser sessions (encrypted locally)
+│   ├── twitter.json
+│   ├── instagram.json
+│   └── ...
+├── jobs/                    # Scheduled job scripts
+├── queue/                   # Offline queue
+│   ├── pending/
+│   ├── running/
+│   ├── completed/
+│   └── failed/
+├── results/                 # Saved searches
+│   ├── reddit/
+│   ├── youtube/
+│   └── ...
+├── logs/                    # Application logs
+└── plugins/                 # Custom scrapers
+```
+
+---
+
+## 🔒 Stealth Features
+
+### Multi-Layer Anti-Detection
+- **Fingerprint Randomization**: Rotates User-Agent, viewport, platform
+- **Header Rotation**: Realistic browser headers with natural variation
+- **Timing Control**: Platform-specific delays (Reddit: 2-4s, Instagram: 4-6s)
+- **Cookie Persistence**: Reuse real browser sessions
+- **Rate Limiting**: Exponential backoff on 429s
+
+### Mobile IP Advantage
+- Mobile carriers use CGNAT — IPs shared with thousands of users
+- Less likely to be flagged as "datacenter" vs VPS/proxy IPs
+- Geographic diversity changes naturally as you move
+
+---
+
+## ⚙️ Configuration
+
+```yaml
+# ~/.silentreach/config.yaml
+global:
+  headless: true           # False for login flows
+  default_delay: 2.0       # Seconds between requests
+  max_retries: 3
+  timeout: 30
+
+rate_limit:
+  enabled: true
+  default_rpm: 30
+
+notifications:
+  enabled: true
+  termux_api: true
+
+queue:
+  auto_process: true
+  max_retries: 3
+  retry_delay_minutes: 5
+
+cookies:
+  storage_path: ~/.silentreach/cookies/
+  auto_refresh: true
+  refresh_interval_hours: 12
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Termux:API Not Working
+```bash
+pkg install termux-api
+silentreach notify "test"
+```
+
+### nodriver Chrome Error
+```bash
+pkg install chromium
+chromium --version
+```
+
+### YouTube/Network Issues
+```bash
+# DNS check
+nslookup youtube.com
+
+# Try with proxy if blocked
+export HTTP_PROXY=http://your-proxy:port
+```
+
+### Clear Cookies & Re-login
+```bash
+rm ~/.silentreach/cookies/*.json
+silentreach login twitter
+```
+
+---
+
+## 📚 Documentation
+
+- **Quick Reference**: `QUICKREF.md`
+- **Termux Setup**: `TERMUX.md`
+- **CLI Commands**: `CLI.md`
+- **Examples**: `examples/`
+- **API Docs**: `docs/api/`
+
+---
+
+## 🤝 Contributing
+
+```bash
 git clone https://github.com/ykycportal/silentreach.git
 cd silentreach
-pip install -e ".[all]"
-
-# Configure
-python scripts/silentreach.py setup
+pip install -e ".[dev]"
+pytest tests/ -v
 ```
 
-## License
-MIT - Use responsibly. Stay silent, reach everything.
+---
+
+## 📄 License
+
+MIT License — Use responsibly. Stay silent, reach everything.
+
+---
+
+**Built for Android by [y Kycportal](https://github.com/ykycportal)**
