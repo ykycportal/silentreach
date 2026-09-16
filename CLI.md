@@ -37,16 +37,40 @@ silentreach search "products" -p reddit --limit 50
 ```
 
 ### Output Options
+
+SilentReach supports **7 export formats**:
+
+| Flag | Format | Use Case |
+|------|--------|----------|
+| `-f json` | JSON | API integration, scripts |
+| `-f md` | Markdown | Readable reports (default) |
+| `-f csv` | CSV | Spreadsheet import |
+| `-f txt` | TXT | Plain text output |
+| `-f pdf` | PDF | Email attachments, printing |
+| `-f xlsx` | Excel | Data analysis in Excel |
+| `-f ods` | ODS | LibreOffice spreadsheets |
+
 ```bash
-# JSON output (default)
+# JSON output (structured data)
 silentreach search "topic" -p all -f json
 
-# Markdown report
+# Markdown report (human-readable)
 silentreach search "topic" -p all -f markdown
 
-# Save to file
-silentreach search "topic" -p all -o results.json
-silentreach search "topic" -p all -f markdown -o report.md
+# CSV for spreadsheet import
+silentreach search "topic" -p all -f csv -o data.csv
+
+# PDF for email/print
+silentreach search "topic" -p all -f pdf -o report.pdf
+
+# Excel for analysis
+silentreach search "topic" -p all -f xlsx -o analysis.xlsx
+
+# LibreOffice format
+silentreach search "topic" -p all -f ods -o report.ods
+
+# Auto-detect from file extension
+silentreach search "topic" -o results.pdf
 ```
 
 ### Advanced Search

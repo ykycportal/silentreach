@@ -301,6 +301,35 @@ class SilentDashboard:
 
 ---
 
+## Output Formats
+
+SilentReach exports to **7 formats**:
+
+| Format | Library | Use Case |
+|--------|---------|----------|
+| JSON | stdlib | API integration, scripts |
+| Markdown | stdlib | Readable reports (default) |
+| CSV | stdlib | Spreadsheet import |
+| TXT | stdlib | Plain text, logs |
+| PDF | reportlab | Email attachments, printing |
+| Excel (.xlsx) | openpyxl | Data analysis in Excel |
+| ODS | odfpy | LibreOffice, open standard |
+
+### Usage
+
+```bash
+# Export to PDF for email
+silentreach search "topic" -f pdf -o report.pdf
+
+# Export to Excel for analysis
+silentreach search "topic" -f xlsx -o data.xlsx
+
+# Auto-detect from extension
+silentreach search "topic" -o output.pdf
+```
+
+---
+
 ## Extending SilentReach
 
 ### Adding New Platform

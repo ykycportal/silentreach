@@ -110,15 +110,31 @@ silentreach intel "ecommerce trends" --depth full
 ```
 
 ### Save Results
+
+Export in **7 formats** for maximum flexibility:
+
 ```bash
-# JSON format
+# JSON format (API integration)
 silentreach search "topic" -p all -f json -o results.json
 
-# Markdown report
+# Markdown report (human-readable)
 silentreach search "topic" -p all -f markdown -o report.md
 
-# CSV export
+# CSV export (spreadsheet import)
 silentreach search "topic" -p reddit --limit 50 -f csv -o reddit_data.csv
+
+# PDF report (email attachment)
+silentreach search "competitors" -p all -f pdf -o report.pdf
+
+# Excel analysis (data processing)
+silentreach search "trends" -p all -f xlsx -o analysis.xlsx
+
+# LibreOffice format (open standard)
+silentreach search "research" -p all -f ods -o report.ods
+
+# Auto-detect from extension
+silentreach search "topic" -o output.pdf
+silentreach search "topic" -o output.xlsx
 ```
 
 ---

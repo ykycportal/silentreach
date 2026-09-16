@@ -145,6 +145,46 @@ silentreach search "topic" -p all --limit 50
 # Save results
 silentreach search "topic" -p all -f json -o results.json
 silentreach search "topic" -p all -f markdown -o report.md
+
+### Output Formats
+
+SilentReach supports **7 export formats** for maximum flexibility:
+
+| Format | Extension | Library | Use Case |
+|--------|-----------|---------|----------|
+| **JSON** | `.json` | stdlib | API integration, programmatic parsing |
+| **Markdown** | `.md` | stdlib | Human-readable reports (default) |
+| **CSV** | `.csv` | stdlib | Import to Excel, Google Sheets, any spreadsheet |
+| **TXT** | `.txt` | stdlib | Plain text, logs, quick viewing |
+| **PDF** | `.pdf` | reportlab | Professional reports, email attachments, printing |
+| **Excel** | `.xlsx` | openpyxl | Advanced analysis, charts, Excel formulas |
+| **ODS** | `.ods` | odfpy | LibreOffice, open document standard |
+
+### Format Examples
+
+```bash
+# JSON - for APIs and scripts
+silentreach search "dropshipping" -p all -f json -o data.json
+
+# Markdown - readable report
+silentreach search "dropshipping" -p all -f md -o report.md
+
+# CSV - spreadsheet compatible
+silentreach search "dropshipping" -p reddit,youtube -f csv -o results.csv
+
+# PDF - email attachment, print-ready
+silentreach search "competitors" -p all -f pdf -o competitors_report.pdf
+
+# Excel - data analysis
+silentreach search "trends" -p all -f xlsx -o trends_analysis.xlsx
+
+# LibreOffice - open format
+silentreach search "research" -p all -f ods -o research.ods
+
+# Auto-detect from extension (no -f flag needed)
+silentreach search "topic" -o myreport.pdf
+silentreach search "topic" -o myreport.xlsx
+```
 ```
 
 ### Intelligence Reports
