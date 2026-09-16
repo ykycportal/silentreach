@@ -1,11 +1,13 @@
 """
 LinkedIn Scraper for SilentReach
-Public pages via agent-reach, authenticated via nodriver.
+Public pages via Jina Reader (agent-reach), authenticated via nodriver.
 """
 
 import asyncio
 import logging
+import urllib.request
 from typing import Optional
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -15,75 +17,96 @@ class LinkedInScraper:
     
     def __init__(self, config: Optional[dict] = None):
         self.config = config or {}
+        self.cookie_path = Path.home() / ".silentreach" / "cookies" / "linkedin.json"
     
     async def search_public(self, query: str, limit: int = 20) -> dict:
-        """Search LinkedIn using agent-reach (public pages only)."""
+        """Search LinkedIn using Jina Reader (public pages only)."""
         try:
-            from agent_reach import AgentReach
-            reach = AgentReach()
-            
-            # LinkedIn public search
+            # Use Jina Reader via agent-reach web channel
             url = f"https://www.linkedin.com/search/results/all/?keywords={query.replace(' ', '+')}"
-            result = reach.read(url)
+            jina_url = f"https://r.jina.ai/{url}"
             
-            if result:
-                profiles = self._parse_linkedin_content(result.content, query)
-                return {
-                    "query": query,
-                    "profiles": profiles[:limit],
-                    "method": "public",
-                    "note": "Limited to public profiles only",
+            req = urllib.request.Request(
+                jina_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "text/plain",
                 }
+            )
+            
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                content = resp.read().decode("utf-8", errors="ignore")
+                
+            profiles = self._parse_linkedin_content(content, query)
+            
+            return {
+                "query": query,
+                "profiles": profiles[:limit],
+                "total": len(profiles),
+                "method": "jina-reader",
+                "note": "Limited to public profiles only",
+            }
+            
         except Exception as e:
             logger.warning(f"LinkedIn public search failed: {e}")
-        
-        return {"query": query, "profiles": [], "method": "public"}
+            return {"query": query, "profiles": [], "method": "jina-reader"}
     
     async def search_auth(self, query: str, limit: int = 20) -> dict:
         """Search LinkedIn with authenticated session."""
-        import nodriver as uc
-        
-        browser = await uc.start(headless=True)
-        
-        cookie_path = self.config.get("cookie_path", f"{Path.home()}/.silentreach/cookies/linkedin.json")
-        if Path(cookie_path).exists():
-            try:
-                browser = await browser.load_cookies(cookie_path)
-            except:
-                pass
-        
         try:
+            import nodriver as uc
+            
+            browser = await uc.start(headless=True)
+            
+            # Load cookies
+            if self.cookie_path.exists():
+                try:
+                    browser = await browser.load_cookies(self.cookie_path)
+                except:
+                    pass
+            
             page = await browser.get(f"https://www.linkedin.com/search/results/all/?keywords={query}")
             await asyncio.sleep(3)
             
             content = await page.get_content()
             profiles = self._parse_linkedin_content(content, query)
             
+            await browser.stop()
+            
             return {
                 "query": query,
                 "profiles": profiles[:limit],
-                "method": "authenticated",
+                "total": len(profiles),
+                "method": "nodriver",
             }
+            
         except Exception as e:
             return {"query": query, "profiles": [], "error": str(e)}
-        finally:
-            await browser.stop()
     
     async def get_profile(self, profile_url: str) -> dict:
         """Get a specific LinkedIn profile."""
         try:
-            from agent_reach import AgentReach
-            reach = AgentReach()
+            # Try Jina Reader first
+            jina_url = f"https://r.jina.ai/{profile_url}"
             
-            result = reach.read(profile_url)
+            req = urllib.request.Request(
+                jina_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "text/plain",
+                }
+            )
             
-            if result:
-                profile = self._parse_profile(result.content)
-                return {"url": profile_url, "profile": profile}
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                content = resp.read().decode("utf-8", errors="ignore")
+                
+            profile = self._parse_profile(content)
+            
+            return {"url": profile_url, "profile": profile, "method": "jina-reader"}
+            
         except Exception as e:
             logger.error(f"LinkedIn profile fetch failed: {e}")
-        
-        return {"url": profile_url, "error": str(e)}
+            return {"url": profile_url, "error": str(e)}
     
     def _parse_linkedin_content(self, content: str, query: str) -> list:
         """Parse LinkedIn search results."""

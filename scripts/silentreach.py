@@ -53,13 +53,14 @@ async def cmd_search(args):
     """Execute a search across platforms."""
     config = load_config()
     
+    # Import scrapers dynamically
     scrapers = {
-        "reddit": "scrapers.reddit.RedditScraper",
-        "youtube": "scrapers.youtube.YouTubeScraper",
-        "twitter": "scrapers.twitter.TwitterScraper",
-        "instagram": "scrapers.instagram.InstagramScraper",
-        "linkedin": "scrapers.linkedin.LinkedInScraper",
-        "bilibili": "scrapers.bilibili.BilibiliScraper",
+        "reddit": ("scrapers.reddit", "RedditScraper"),
+        "youtube": ("scrapers.youtube", "YouTubeScraper"),
+        "twitter": ("scrapers.twitter", "TwitterScraper"),
+        "instagram": ("scrapers.instagram", "InstagramScraper"),
+        "linkedin": ("scrapers.linkedin", "LinkedInScraper"),
+        "bilibili": ("scrapers.bilibili", "BilibiliScraper"),
     }
     
     results = {}
@@ -78,15 +79,21 @@ async def cmd_search(args):
         logger.info(f"Searching {platform} for: {args.query}")
         
         try:
-            module_path, class_name = scrapers[platform].rsplit(".", 1)
-            module = __import__(f"{module_path}", fromlist=[class_name])
+            module_name, class_name = scrapers[platform]
+            module = __import__(module_name, fromlist=[class_name])
             ScraperClass = getattr(module, class_name)
             
             scraper = ScraperClass(config)
-            result = await scraper.search(args.query, limit=args.limit)
+            
+            # Call search with correct signature
+            if hasattr(scraper, 'search'):
+                result = await scraper.search(args.query, limit=args.limit)
+            else:
+                result = {"error": f"{platform} scraper has no search method"}
             
             results[platform] = result
-            logger.info(f"Found {len(result.get('results', result.get('videos', [])))} items on {platform}")
+            count = len(result.get("posts", result.get("videos", result.get("tweets", []))))
+            logger.info(f"Found {count} items on {platform}")
         except Exception as e:
             logger.error(f"Error on {platform}: {e}")
             results[platform] = {"error": str(e)}
@@ -99,6 +106,49 @@ async def cmd_search(args):
             "results": results,
         }
         print(json.dumps(output, indent=2))
+    elif args.format == "csv":
+        from services.output_fmt import OutputFormatter
+        print(OutputFormatter.to_csv(results))
+    elif args.format == "pdf":
+        from services.output_fmt import OutputFormatter
+        pdf_bytes = OutputFormatter.to_pdf(results, title=f"SilentReach: {args.query}")
+        if pdf_bytes:
+            output_path = Path(args.output) if args.output else None
+            if output_path:
+                with open(output_path, 'wb') as f:
+                    f.write(pdf_bytes)
+                print(f"[✓] PDF saved to: {output_path}")
+            else:
+                # Print first page preview
+                print("[PDF generated - use -o flag to save]")
+        else:
+            print("[!] PDF generation failed (install reportlab)")
+    elif args.format == "xlsx":
+        from services.output_fmt import OutputFormatter
+        xlsx_bytes = OutputFormatter.to_excel(results, title=f"SilentReach: {args.query}")
+        if xlsx_bytes:
+            output_path = Path(args.output) if args.output else None
+            if output_path:
+                with open(output_path, 'wb') as f:
+                    f.write(xlsx_bytes)
+                print(f"[✓] Excel saved to: {output_path}")
+            else:
+                print("[Excel generated - use -o flag to save]")
+        else:
+            print("[!] Excel generation failed (install openpyxl)")
+    elif args.format == "ods":
+        from services.output_fmt import OutputFormatter
+        ods_bytes = OutputFormatter.to_odf(results, title=f"SilentReach: {args.query}")
+        if ods_bytes:
+            output_path = Path(args.output) if args.output else None
+            if output_path:
+                with open(output_path, 'wb') as f:
+                    f.write(ods_bytes)
+                print(f"[✓] ODS saved to: {output_path}")
+            else:
+                print("[ODS generated - use -o flag to save]")
+        else:
+            print("[!] ODS generation failed (install odfpy)")
     else:
         # Markdown format
         print(f"# SilentReach Results: {args.query}\n")
@@ -120,16 +170,23 @@ async def cmd_search(args):
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
+        # Determine format from extension or argument
+        fmt = args.format if args.format != 'md' else output_path.suffix.lstrip('.')
+        if fmt == '':
+            fmt = 'md'
+
+        # Format data for output
         output_data = {
             "query": args.query,
             "timestamp": datetime.now().isoformat(),
             "results": results,
         }
-        
-        with open(output_path, "w") as f:
-            json.dump(output_data, f, indent=2)
-        
+
+        # Use OutputFormatter for all formats
+        from services.output_fmt import OutputFormatter
+        OutputFormatter.save_to_file(output_data, str(output_path), fmt)
+
         logger.info(f"Results saved to {output_path}")
 
 
@@ -419,8 +476,8 @@ def main():
                                help="Platform(s) to search (comma-separated or 'all')")
     search_parser.add_argument("--limit", "-l", type=int, default=20,
                                help="Max results per platform")
-    search_parser.add_argument("--format", "-f", choices=["json", "markdown"], default="markdown",
-                               help="Output format")
+    search_parser.add_argument("--format", "-f", choices=["json", "md", "csv", "txt", "pdf", "xlsx", "ods"], default="md",
+                               help="Output format (default: markdown)")
     search_parser.add_argument("--output", "-o", help="Save results to file")
     search_parser.set_defaults(func=cmd_search)
     
@@ -449,6 +506,67 @@ def main():
     login_parser.add_argument("--password", "-P", help="Password")
     login_parser.set_defaults(func=cmd_login)
     
+    # Schedule command
+    schedule_parser = subparsers.add_parser("schedule", help="Manage scheduled jobs")
+    schedule_sub = schedule_parser.add_subparsers(dest="schedule_action")
+    
+    # List jobs
+    list_parser = schedule_sub.add_parser("list", help="List scheduled jobs")
+    list_parser.set_defaults(func=cmd_schedule_list)
+    
+    # Add job
+    add_parser = schedule_sub.add_parser("add", help="Add a scheduled job")
+    add_parser.add_argument("name", help="Job name")
+    add_parser.add_argument("cron", help="Cron expression (e.g., '0 8 * * *')")
+    add_parser.add_argument("--command", "-c", required=True, help="Command to run")
+    add_parser.add_argument("--description", "-d", help="Job description")
+    add_parser.set_defaults(func=cmd_schedule_add)
+    
+    # Remove job
+    remove_parser = schedule_sub.add_parser("remove", help="Remove a scheduled job")
+    remove_parser.add_argument("name", help="Job name to remove")
+    remove_parser.set_defaults(func=cmd_schedule_remove)
+    
+    # Run now
+    run_parser = schedule_sub.add_parser("run", help="Run a job immediately")
+    run_parser.add_argument("name", help="Job name to run")
+    run_parser.set_defaults(func=cmd_schedule_run)
+    
+    # Notify command
+    notify_parser = subparsers.add_parser("notify", help="Send test notification")
+    notify_parser.add_argument("message", nargs="?", default="SilentReach is working!", help="Notification message")
+    notify_parser.set_defaults(func=cmd_notify)
+    
+    # Queue command
+    queue_parser = subparsers.add_parser("queue", help="Manage offline queue")
+    queue_sub = queue_parser.add_subparsers(dest="queue_action")
+    
+    # Add to queue
+    q_add = queue_sub.add_parser("add", help="Add job to queue")
+    q_add.add_argument("platform", help="Platform")
+    q_add.add_argument("query", help="Search query")
+    q_add.add_argument("--limit", "-l", type=int, default=20)
+    q_add.add_argument("--priority", "-p", type=int, default=0)
+    q_add.set_defaults(func=cmd_queue_add)
+    
+    # Show queue
+    q_show = queue_sub.add_parser("show", help="Show queue status")
+    q_show.set_defaults(func=cmd_queue_show)
+    
+    # Process queue
+    q_process = queue_sub.add_parser("process", help="Process next job in queue")
+    q_process.set_defaults(func=cmd_queue_process)
+    
+    # Dashboard command
+    dashboard_parser = subparsers.add_parser("dashboard", help="Start web dashboard")
+    dashboard_parser.add_argument("--port", "-p", type=int, default=5000, help="Port number")
+    dashboard_parser.add_argument("--background", "-b", action="store_true", help="Run in background")
+    dashboard_parser.set_defaults(func=cmd_dashboard)
+    
+    # Presets command
+    presets_parser = subparsers.add_parser("presets", help="List preset monitoring templates")
+    presets_parser.set_defaults(func=cmd_presets)
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -456,6 +574,212 @@ def main():
         return
     
     asyncio.run(args.func(args))
+
+
+# Schedule commands
+async def cmd_schedule_list(args):
+    """List scheduled jobs."""
+    from services.scheduler import get_scheduler
+    
+    scheduler = get_scheduler()
+    jobs = scheduler.list_jobs()
+    
+    print("\n=== SilentReach Scheduled Jobs ===\n")
+    
+    if not jobs:
+        print("No scheduled jobs found.")
+        print("Use: silentreach schedule add <name> <cron> --command '<cmd>'")
+        return
+    
+    for job in jobs:
+        status = "✅" if job.get("enabled") else "❌"
+        print(f"{status} {job.get('name', 'unknown')}")
+        print(f"   Cron: {job.get('cron', 'N/A')}")
+        print(f"   Command: {job.get('command', 'N/A')}")
+        if job.get("description"):
+            print(f"   Description: {job.get('description')}")
+        print()
+
+
+async def cmd_schedule_add(args):
+    """Add a scheduled job."""
+    from services.scheduler import get_scheduler
+    from services.notifications import notify_success, notify_error
+    
+    scheduler = get_scheduler()
+    
+    success = scheduler.add_job(
+        name=args.name,
+        cron_expr=args.cron,
+        command=args.command,
+        description=args.description or ""
+    )
+    
+    if success:
+        print(f"✅ Added job '{args.name}' with cron: {args.cron}")
+        notify_success("Scheduler Updated", f"Added job: {args.name}")
+    else:
+        print(f"❌ Failed to add job '{args.name}'")
+        notify_error("Scheduler Error", f"Failed to add job: {args.name}")
+
+
+async def cmd_schedule_remove(args):
+    """Remove a scheduled job."""
+    from services.scheduler import get_scheduler
+    from services.notifications import notify_info
+    
+    scheduler = get_scheduler()
+    
+    success = scheduler.remove_job(args.name)
+    
+    if success:
+        print(f"✅ Removed job '{args.name}'")
+        notify_info("Scheduler Updated", f"Removed job: {args.name}")
+    else:
+        print(f"❌ Job '{args.name}' not found")
+
+
+async def cmd_schedule_run(args):
+    """Run a job immediately."""
+    from services.scheduler import get_scheduler
+    from services.notifications import notify_info, notify_error
+    
+    scheduler = get_scheduler()
+    
+    success = scheduler.run_now(args.name)
+    
+    if success:
+        print(f"✅ Started job '{args.name}' in background")
+        notify_info("Job Started", f"Running job: {args.name}")
+    else:
+        print(f"❌ Job '{args.name}' not found")
+        notify_error("Job Error", f"Job not found: {args.name}")
+
+
+# Notify command
+async def cmd_notify(args):
+    """Send test notification."""
+    from services.notifications import notify_success, check_termux_api
+    
+    api_status = check_termux_api()
+    
+    if not api_status["available"]:
+        print("❌ Termux:API not installed")
+        print("Install with: pkg install termux-api")
+        return
+    
+    notify_success("SilentReach", args.message)
+    print(f"✅ Notification sent: {args.message}")
+
+
+# Queue commands
+async def cmd_queue_add(args):
+    """Add job to offline queue."""
+    from services.queue import get_queue
+    from services.notifications import notify_info
+    
+    queue = get_queue()
+    job_id = queue.add_job(
+        platform=args.platform,
+        query=args.query,
+        limit=args.limit,
+        priority=args.priority
+    )
+    
+    print(f"✅ Added to queue: {args.platform} - {args.query}")
+    print(f"   Job ID: {job_id}")
+    print(f"   Stats: {queue.get_stats()}")
+    
+    notify_info("Queue Updated", f"Added {args.platform} search to queue")
+
+
+async def cmd_queue_show(args):
+    """Show queue status."""
+    from services.queue import get_queue
+    
+    queue = get_queue()
+    stats = queue.get_stats()
+    
+    print("\n=== SilentReach Queue Status ===\n")
+    print(f"Pending:   {stats['pending']}")
+    print(f"Running:   {stats['running']}")
+    print(f"Completed: {stats['completed']}")
+    print(f"Failed:    {stats['failed']}")
+    print()
+
+
+async def cmd_queue_process(args):
+    """Process next job in queue."""
+    from services.queue import get_queue
+    from services.notifications import notify_complete, notify_error
+    
+    queue = get_queue()
+    job = queue.get_next_job()
+    
+    if not job:
+        print("Queue is empty")
+        return
+    
+    print(f"Processing: {job['platform']} - {job['query']}")
+    
+    # Start job
+    queue.start_job(job["id"])
+    
+    # Import and run scraper
+    try:
+        module_name = f"scrapers.{job['platform']}"
+        module = __import__(module_name, fromlist=["Scraper"])
+        ScraperClass = getattr(module, f"{job['platform'].capitalize()}Scraper")
+        
+        scraper = ScraperClass()
+        result = await scraper.search(job["query"], limit=job.get("limit", 20))
+        
+        # Complete job
+        queue.complete_job(job["id"], result)
+        
+        count = len(result.get("data", result.get("posts", result.get("videos", []))))
+        print(f"✅ Completed: {count} results")
+        notify_complete(job["platform"], count, job["query"])
+        
+    except Exception as e:
+        queue.fail_job(job["id"], str(e))
+        print(f"❌ Failed: {e}")
+        notify_error(job["platform"], str(e), job["query"])
+
+
+# Dashboard command
+async def cmd_dashboard(args):
+    """Start web dashboard."""
+    from services.dashboard import start_dashboard
+    from services.notifications import notify_info
+    
+    print(f"\n🌐 Starting SilentReach Dashboard...")
+    print(f"   Access at: http://localhost:{args.port}")
+    print(f"   Press Ctrl+C to stop\n")
+    
+    notify_info("Dashboard Started", f"Access at http://localhost:{args.port}")
+    
+    dashboard = start_dashboard(port=args.port, background=args.background)
+
+
+# Presets command
+async def cmd_presets(args):
+    """List preset monitoring templates."""
+    from services.scheduler import preset_commands
+    
+    presets = preset_commands()
+    
+    print("\n=== SilentReach Preset Templates ===\n")
+    
+    for name, preset in presets.items():
+        print(f"📋 {name.replace('_', ' ').title()}")
+        print(f"   Cron: {preset['cron']}")
+        print(f"   Command: {preset['command']}")
+        print(f"   Description: {preset['description']}")
+        print()
+    
+    print("To use a preset:")
+    print("  silentreach schedule add <name> <cron> --command '<command>'")
 
 
 if __name__ == "__main__":

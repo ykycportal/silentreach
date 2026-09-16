@@ -14,7 +14,7 @@ setup(
     packages=find_packages(),
     python_requires=">=3.9",
     install_requires=[
-        "agent-reach @ git+https://github.com/Panniantong/agent-reach.git@main",
+        "agent-reach @ git+https://github.com/Panniantong/agent-reach.git@v1.5.0",
         "nodriver>=0.38",
         "beautifulsoup4>=4.12",
         "httpx>=0.27",
@@ -35,6 +35,24 @@ setup(
             "redis>=5.0",
         ],
         "proxy": [
+            "requests[socks]>=2.31",
+        ],
+        "export": [
+            "reportlab>=4.0",
+            "openpyxl>=3.1",
+            "odfpy>=1.4",
+        ],
+        "sheets": [
+            "gspread>=6.0",
+            "google-auth>=2.0",
+        ],
+        "all": [
+            "reportlab>=4.0",
+            "openpyxl>=3.1",
+            "odfpy>=1.4",
+            "gspread>=6.0",
+            "google-auth>=2.0",
+            "redis>=5.0",
             "requests[socks]>=2.31",
         ],
     },
