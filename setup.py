@@ -7,7 +7,7 @@ setup(
     name="silentreach",
     version="1.0.0",
     author="y Kycportal",
-    description="Cross-Platform ultimate Web Intelligence Framework — scraping on steroids with all kind of goodies. Built for Termux/Android but Windows, macOS, Linux no problem, same difference.",
+    description="Web intelligence framework combining agent-reach + nodriver for social media scraping with extra skillsets for excellent results. Published in different formats.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ykycportal/silentreach",
