@@ -7,13 +7,13 @@
 [![macOS](https://img.shields.io/badge/macOS-Supported-333333?logo=apple)](https://apple.com/macos)
 [![Linux](https://img.shields.io/badge/Linux-Supported-FCC624?logo=linux)](https://linux.org)
 
-## 🌐 Web Intelligence Framework
+## 🌐 The Most Powerful Intelligence Stack for Marketing Departments
 
-**SilentReach** combines agent-reach (public APIs) + nodriver (browser automation) for web research and scraping.
+**SilentReach + Semantica = The most powerful combination for marketing departments and marketing agents.**
 
-Built for **Termux/Android** — works on **Windows, macOS, and Linux** too.
+SilentReach provides the scraping engine (12 platforms, stealth browser, mobile IP advantage). Semantica provides the intelligence layer (entity extraction, knowledge graphs, conflict detection, provenance tracking). Together, they transform raw web data into structured marketing intelligence that humans can read and AI agents can consume.
 
-> One codebase. Seven export formats. Twelve platforms. Zero cloud required.
+> **One stack. Infinite intelligence.** Built for Termux/Android — works on Windows, macOS, and Linux too.
 
 ---
 
@@ -33,6 +33,22 @@ silentreach search "dropshipping" -p reddit,youtube --limit 10
 ```
 
 **Why Termux?** Mobile IPs are harder to block, background jobs run 24/7, and you get push notifications directly to your phone.
+
+### Build Marketing Intelligence (The Power Combo)
+
+```bash
+# Install with Semantica for full power
+pip install "silentreach[kg]"
+
+# Build a knowledge graph — the most powerful combo for marketing
+silentreach kg build "AI marketing tools" -p reddit,linkedin,twitter
+
+# Export for your team and agents
+silentreach kg export --format markdown   # For marketing department
+silentreach kg export --format json       # For marketing agents
+```
+
+**Result:** A complete intelligence report with entities (Shopify, HubSpot, etc.), relations (X uses Y, A vs B), conflicts (sources disagree), and executive recommendations — all automatically generated.
 
 ### Windows
 
@@ -143,14 +159,23 @@ All platforms get these features:
 
 ## 🧠 Knowledge Graph (KG) Integration
 
-**New in v2.0**: Combine web scraping with knowledge graph intelligence.
+**The most powerful combination for marketing departments and marketing agents.**
 
-### What You Get
+SilentReach's scraping power meets Semantica's intelligence layer — creating a complete marketing intelligence pipeline from raw data to actionable insights.
 
-- **Entity Extraction**: Automatically identify brands, products, people, trends
-- **Conflict Detection**: Find when sources disagree on the same claim
-- **Agent-Ready Bundles**: Structured JSON for AI marketing agents to consume
-- **Human Reports**: Campaign briefs and executive summaries
+### Why This Combo Wins
+
+| SilentReach Alone | + Semantica |
+|-------------------|-------------|
+| Raw posts/articles | Structured knowledge graph |
+| "Here's what I found" | "Here's what we know, and who said it" |
+| No cross-platform correlation | Detects conflicts across Reddit, Twitter, LinkedIn |
+| Can't ask complex questions | SPARQL/graph queries over all data |
+| One-shot searches | Persistent context you build over time |
+
+**For Marketing Departments:** Get campaign briefs, competitive analysis, and trend reports in minutes, not hours.
+
+**For Marketing Agents:** Get structured JSON bundles with entities, relations, conflicts, and executive summaries ready for automated workflows.
 
 ### Quick Start
 
