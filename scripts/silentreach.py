@@ -570,6 +570,48 @@ def main():
     presets_parser = subparsers.add_parser("presets", help="List preset monitoring templates")
     presets_parser.set_defaults(func=cmd_presets)
     
+    # ============================================================
+    # Knowledge Graph Commands (KG Integration)
+    # ============================================================
+    kg_parser = subparsers.add_parser("kg", help="Knowledge graph operations for marketing intelligence")
+    kg_sub = kg_parser.add_subparsers(dest="kg_command", help="KG subcommands")
+    
+    # kg build - search and build KG
+    kg_build = kg_sub.add_parser("build", help="Build knowledge graph from topic research")
+    kg_build.add_argument("topic", help="Research topic")
+    kg_build.add_argument("--platform", "-p", default="all", help="Platform(s) to search")
+    kg_build.add_argument("--depth", "-d", choices=["quick", "full"], default="full", help="Research depth")
+    kg_build.add_argument("--limit", "-l", type=int, default=30, help="Max results per platform")
+    kg_build.add_argument("--output", "-o", help="Save report to file")
+    kg_build.set_defaults(func=cmd_kg_build)
+    
+    # kg query - search entities
+    kg_query = kg_sub.add_parser("query", help="Query the knowledge graph")
+    kg_query.add_argument("--search", "-s", help="Search entities by name")
+    kg_query.add_argument("--type", "-t", choices=["Company", "Product", "Person", "Trend", "Concept", "Platform"], help="Filter by entity type")
+    kg_query.set_defaults(func=cmd_kg_query)
+    
+    # kg conflicts - find contradictions
+    kg_conflicts = kg_sub.add_parser("conflicts", help="Find conflicting intelligence across sources")
+    kg_conflicts.add_argument("--entity", "-e", help="Check specific entity for conflicts")
+    kg_conflicts.set_defaults(func=cmd_kg_conflicts)
+    
+    # kg sessions - list saved sessions
+    kg_sessions = kg_sub.add_parser("sessions", help="List saved knowledge graph sessions")
+    kg_sessions.set_defaults(func=cmd_kg_sessions)
+    
+    # kg load - load a session
+    kg_load = kg_sub.add_parser("load", help="Load a previous KG session")
+    kg_load.add_argument("session_id", nargs="?", help="Session ID (defaults to latest)")
+    kg_load.set_defaults(func=cmd_kg_load)
+    
+    # kg export - export as agent bundle
+    kg_export = kg_sub.add_parser("export", help="Export intelligence bundle for agents")
+    kg_export.add_argument("--topic", "-t", help="Topic name")
+    kg_export.add_argument("--format", "-f", choices=["json", "markdown", "csv"], default="json", help="Export format")
+    kg_export.add_argument("--output", "-o", help="Output file path")
+    kg_export.set_defaults(func=cmd_kg_export)
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -783,6 +825,256 @@ async def cmd_presets(args):
     
     print("To use a preset:")
     print("  silentreach schedule add <name> <cron> --command '<command>'")
+
+
+# ============================================================
+# Knowledge Graph Commands
+# ============================================================
+
+async def cmd_kg_build(args):
+    """Build knowledge graph from topic research."""
+    from services.kg_service import KGService, KGConfig
+    from services.report_generator import MarketingReportGenerator
+    
+    # First run the search
+    print(f"\n🔍 Searching for: {args.topic}")
+    print("=" * 50)
+    
+    # Run search first to get results
+    search_args = type('obj', (object,), {
+        'query': args.topic,
+        'platform': args.platform,
+        'limit': args.limit,
+        'format': 'json',
+        'output': None,
+    })()
+    
+    # Execute search
+    search_results = {}
+    scrapers = {
+        "reddit": ("scrapers.reddit", "RedditScraper"),
+        "youtube": ("scrapers.youtube", "YouTubeScraper"),
+        "twitter": ("scrapers.twitter", "TwitterScraper"),
+        "instagram": ("scrapers.instagram", "InstagramScraper"),
+        "linkedin": ("scrapers.linkedin", "LinkedInScraper"),
+    }
+    
+    if args.platform == "all":
+        platforms = list(scrapers.keys())
+    else:
+        platforms = args.platform.split(",")
+    
+    config = {"global": {"headless": True, "default_delay": 2.0}}
+    
+    for platform in platforms:
+        platform = platform.strip().lower()
+        if platform not in scrapers:
+            continue
+        try:
+            module_name, class_name = scrapers[platform]
+            module = __import__(module_name, fromlist=[class_name])
+            ScraperClass = getattr(module, class_name)
+            scraper = ScraperClass(config)
+            result = await scraper.search(args.topic, limit=args.limit)
+            search_results[platform] = result
+        except Exception as e:
+            print(f"⚠️  {platform}: {e}")
+            search_results[platform] = {"error": str(e)}
+    
+    # Now build the KG
+    print(f"\n🧠 Building knowledge graph...")
+    print("=" * 50)
+    
+    service = KGService()
+    report = await service.ingest_results(search_results, topic=args.topic)
+    
+    print(f"\n✅ Knowledge Graph Built")
+    print(f"   Entities: {report['entities_extracted']}")
+    print(f"   Relations: {report['relations_extracted']}")
+    print(f"   Conflicts: {report['conflicts_found']}")
+    print(f"   Platforms: {', '.join(report['platforms_processed'])}")
+    
+    # Generate and save report
+    generator = MarketingReportGenerator(service)
+    
+    if args.output:
+        bundle = generator.generate_agent_bundle(args.topic)
+        with open(args.output, "w") as f:
+            import json
+            json.dump(bundle, f, indent=2, default=str)
+        print(f"\n💾 Saved to: {args.output}")
+    else:
+        # Print summary
+        print(f"\n📊 Summary:")
+        for name, entity in list(service._entities.items())[:10]:
+            print(f"   • {name} ({entity.type}) - {len(entity.facts)} facts")
+    
+    # Show conflicts if any
+    if report['conflicts_found'] > 0:
+        print(f"\n⚠️  {report['conflicts_found']} conflict(s) detected!")
+        print("   Use: silentreach kg conflicts --entity <name>")
+
+
+async def cmd_kg_query(args):
+    """Query the knowledge graph."""
+    from services.kg_service import KGService
+    
+    service = KGService()
+    
+    # Load latest session if exists
+    if not service.load_session():
+        print("❌ No knowledge graph sessions found. Run 'kg build' first.")
+        return
+    
+    # Query entities
+    results = service.query_entities(
+        search_term=args.search,
+        entity_type=args.type
+    )
+    
+    if not results:
+        print("No entities found matching your criteria.")
+        return
+    
+    print(f"\n📊 Found {len(results)} entities:\n")
+    
+    for entity in results:
+        print(f"• {entity['name']} ({entity['type']})")
+        print(f"  Sources: {', '.join(set(entity['sources']))}")
+        print(f"  Facts: {entity['fact_count']}")
+        if entity.get('sample_facts'):
+            for fact in entity['sample_facts'][:2]:
+                print(f"    - {fact['predicate']}: {fact['object']}")
+        print()
+
+
+async def cmd_kg_conflicts(args):
+    """Find conflicts in the knowledge graph."""
+    from services.kg_service import KGService
+    
+    service = KGService()
+    
+    if not service.load_session():
+        print("❌ No knowledge graph sessions found. Run 'kg build' first.")
+        return
+    
+    if args.entity:
+        # Check specific entity
+        conflicts = service.detect_conflicts()
+        entity_conflicts = [c for c in conflicts if c.entity.lower() == args.entity.lower()]
+        
+        if not entity_conflicts:
+            print(f"✅ No conflicts found for '{args.entity}'")
+            return
+        
+        print(f"\n⚠️  Conflicts for '{args.entity}':\n")
+        for conflict in entity_conflicts:
+            print(f"  Claim 1: {conflict.fact_1} (from {conflict.source_1})")
+            print(f"  Claim 2: {conflict.fact_2} (from {conflict.source_2})")
+            print(f"  Confidence: {conflict.confidence:.0%}")
+            print()
+    else:
+        # Show all conflicts
+        conflicts = service.detect_conflicts()
+        
+        if not conflicts:
+            print("✅ No conflicts detected across sources.")
+            return
+        
+        print(f"\n⚠️  Found {len(conflicts)} conflicts:\n")
+        for conflict in conflicts[:10]:
+            print(f"• {conflict.entity}")
+            print(f"  '{conflict.fact_1}' vs '{conflict.fact_2}'")
+            print(f"  Sources: {conflict.source_1} vs {conflict.source_2}")
+            print()
+
+
+async def cmd_kg_sessions(args):
+    """List saved KG sessions."""
+    from services.kg_service import KGService
+    
+    service = KGService()
+    sessions = service.list_sessions()
+    
+    if not sessions:
+        print("No saved knowledge graph sessions found.")
+        print("Run: silentreach kg build <topic>")
+        return
+    
+    print(f"\n📚 Knowledge Graph Sessions ({len(sessions)}):\n")
+    
+    for session in sessions:
+        print(f"• {session['id']}")
+        print(f"  Topic: {session['topic']}")
+        print(f"  Entities: {session['entities']} | Relations: {session['relations']}")
+        print(f"  Saved: {session['timestamp']}")
+        print()
+
+
+async def cmd_kg_load(args):
+    """Load a KG session."""
+    from services.kg_service import KGService
+    
+    service = KGService()
+    
+    if args.session_id:
+        success = service.load_session(args.session_id)
+    else:
+        success = service.load_session()  # Load latest
+    
+    if not success:
+        print("❌ Session not found. Run 'silentreach kg sessions' to see available sessions.")
+        return
+    
+    print("✅ Loaded knowledge graph session.")
+    print(f"   Use 'kg query' to explore entities")
+    print(f"   Use 'kg conflicts' to find contradictions")
+    print(f"   Use 'kg export' to save as agent bundle")
+
+
+async def cmd_kg_export(args):
+    """Export knowledge graph as agent bundle."""
+    from services.kg_service import KGService
+    from services.report_generator import MarketingReportGenerator
+    
+    service = KGService()
+    
+    if not service.load_session():
+        print("❌ No knowledge graph sessions found. Run 'kg build' first.")
+        return
+    
+    generator = MarketingReportGenerator(service)
+    
+    # Generate bundle
+    topic = args.topic or "market_intelligence"
+    bundle = generator.generate_agent_bundle(topic)
+    
+    # Determine output
+    if args.output:
+        output_path = args.output
+    elif args.format == "markdown":
+        output_path = f"{topic}_report.md"
+    else:
+        output_path = f"{topic}_agent_bundle.json"
+    
+    # Write output
+    if args.format == "markdown":
+        report = generator.generate_campaign_brief(topic)
+        with open(output_path, "w") as f:
+            f.write(report)
+    elif args.format == "csv":
+        csv_data = service.to_csv()
+        with open(output_path, "w") as f:
+            f.write(csv_data)
+    else:
+        import json
+        with open(output_path, "w") as f:
+            json.dump(bundle, f, indent=2, default=str)
+    
+    print(f"💾 Exported to: {output_path}")
+    print(f"   Entities: {len(bundle['entities'])}")
+    print(f"   Relations: {len(bundle['relations'])}")
+    print(f"   Conflicts: {len(bundle['conflicts'])}")
 
 
 if __name__ == "__main__":

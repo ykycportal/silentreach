@@ -31,6 +31,10 @@ setup(
             "black>=24.0",
             "ruff>=0.4",
         ],
+        "kg": [
+            "semantica>=0.7.0",
+            "neo4j>=5.0.0",
+        ],
         "redis": [
             "redis>=5.0",
         ],
@@ -42,10 +46,6 @@ setup(
             "openpyxl>=3.1",
             "odfpy>=1.4",
         ],
-        "sheets": [
-            "gspread>=6.0",
-            "google-auth>=2.0",
-        ],
         "all": [
             "reportlab>=4.0",
             "openpyxl>=3.1",
@@ -54,6 +54,7 @@ setup(
             "google-auth>=2.0",
             "redis>=5.0",
             "requests[socks]>=2.31",
+            "semantica>=0.7.0",
         ],
     },
     entry_points={

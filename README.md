@@ -141,6 +141,59 @@ All platforms get these features:
 
 ---
 
+## 🧠 Knowledge Graph (KG) Integration
+
+**New in v2.0**: Combine web scraping with knowledge graph intelligence.
+
+### What You Get
+
+- **Entity Extraction**: Automatically identify brands, products, people, trends
+- **Conflict Detection**: Find when sources disagree on the same claim
+- **Agent-Ready Bundles**: Structured JSON for AI marketing agents to consume
+- **Human Reports**: Campaign briefs and executive summaries
+
+### Quick Start
+
+```bash
+# Install KG extras
+pip install "silentreach[kg]"
+
+# Build a knowledge graph from a topic
+silentreach kg build "AI regulation" -p reddit,linkedin,twitter
+
+# Query your knowledge graph
+silentreach kg query --search "AI"
+
+# Find conflicts across sources
+silentreach kg conflicts --entity "AI regulation"
+
+# Export for your marketing agents
+silentreach kg export --format json --output intelligence.json
+```
+
+### Output Formats
+
+| Format | Use Case |
+|--------|----------|
+| `json` | Agent consumption (default) |
+| `markdown` | Human-readable campaign briefs |
+| `csv` | Spreadsheet analysis |
+
+### File Structure
+
+All KG data stored locally:
+```
+~/.silentreach/
+├── kg/
+│   ├── graphs/        # Saved sessions (JSON)
+│   ├── reports/       # Generated reports
+│   └── agents/        # Agent-ready bundles
+└── config/
+    └── kg_settings.yaml
+```
+
+---
+
 ## 📋 CLI Commands
 
 ### Search
