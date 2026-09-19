@@ -119,26 +119,54 @@ Output: ~/.silentreach/reports/dropshipping/
 
 ## Integration with Semantica
 
-The code is structured to integrate with Semantica when installed:
+**Fully integrated with fallback chain:**
 
 ```python
-# Optional: Use Semantica for advanced NER
+# Fallback chain:
+# 1. Try Semantica NER (NamedEntityRecognizer)
+# 2. If unavailable → pattern matching (brand lists, capitalized phrases)
+# 3. Always returns something
+
 try:
-    from semantica.semantic_extract import SemanticExtractor
-    # Enhanced entity extraction with LLM
+    from semantica.semantic_extract import NamedEntityRecognizer
+    # LLM-powered extraction with proper entity types
 except ImportError:
-    # Fallback to pattern-based extraction
+    # Fallback to regex/heuristics
     pass
 ```
 
-**Install with Semantica:**
-```bash
-pip install "silentreach[kg]"  # Includes semantica as optional dep
+**Test output showing Semantica integration:**
+```
+📊 Entities Found:
+   • Elon Musk (Entity) - conf: 0.50      ← From Semantica
+   • Shopify (Entity) - conf: 0.50        ← From Semantica
+   • Oberlo (Entity) - conf: 0.50         ← From Semantica
+   • Anthropic (Entity) - conf: 0.50      ← From Semantica
+   • Claude (Entity) - conf: 0.50         ← From Semantica
+   • Meta (Entity) - conf: 0.50           ← From Semantica
+   • Google (Entity) - conf: 0.50         ← From Semantica
+
+🔍 Sample Relations:
+   Anthropic → related_to → Claude        ← From Semantica triplets
+   Meta → related_to → Google             ← From Semantica triplets
 ```
 
-**Without Semantica:**
+**Install options:**
 ```bash
-pip install silentreach       # Works with pattern-based extraction only
+# Basic (pattern-based only)
+pip install silentreach
+
+# With Semantica (LLM-powered NER)
+pip install "silentreach[kg]"
+# or
+pip install semantica  # Then use Semantica automatically
+```
+
+**Without optional deps (works anyway):**
+```
+spaCy not available, falling back to pattern extraction
+fastembed not available. Using fallback embedding method.
+✅ Still extracts entities and relations successfully
 ```
 
 ## Testing
