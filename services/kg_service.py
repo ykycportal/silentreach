@@ -227,7 +227,53 @@ class KGService:
             )
     
     def _extract_entities(self, text: str, platform: str) -> list[dict]:
-        """Extract marketing-relevant entities from text."""
+        """Extract marketing-relevant entities from text.
+        
+        Tries Semantica LLM-based extraction first, falls back to pattern matching.
+        """
+        entities = []
+        
+        # Try Semantica first (LLM-powered NER)
+        semantica_entities = self._try_semantica_extract(text)
+        if semantica_entities:
+            entities.extend(semantica_entities)
+        
+        # Always add pattern-based extraction as fallback
+        entities.extend(self._extract_pattern_entities(text, platform))
+        
+        # Deduplicate
+        return self._deduplicate_entities(entities)
+    
+    def _try_semantica_extract(self, text: str) -> list[dict]:
+        """Try to extract entities using Semantica LLM. Returns empty list if unavailable."""
+        try:
+            from semantica.semantic_extract import SemanticExtractor
+            
+            extractor = SemanticExtractor()
+            # Process in batch for efficiency
+            result = extractor.process_batch([text])
+            
+            entities = []
+            for entity in result.get("entities", []):
+                entities.append({
+                    "name": entity.get("text", ""),
+                    "type": entity.get("label", "Entity"),
+                    "confidence": entity.get("confidence", 0.8),
+                })
+            
+            if entities:
+                logger.debug(f"Extracted {len(entities)} entities via Semantica")
+            
+            return entities
+        except ImportError:
+            # Semantica not installed, fall back to patterns
+            return []
+        except Exception as e:
+            logger.warning(f"Semantica extraction failed: {e}")
+            return []
+    
+    def _extract_pattern_entities(self, text: str, platform: str) -> list[dict]:
+        """Pattern-based entity extraction (fallback when Semantica unavailable)."""
         entities = []
         text_lower = text.lower()
         
@@ -259,14 +305,14 @@ class KGService:
             (r'\bconversion\s?rate\b', 'Metric'),
             (r'\bchurn\b', 'Metric'),
             (r'\bltv\b', 'Metric'),
-            (r'\bCAC\b', 'Metric'),
-            (r'\bCAC\b', 'Metric'),
+            (r'\bcac\b', 'Metric'),
         ]
         
         for pattern, etype in brand_patterns:
             if pattern.lower() in text_lower:
+                name = pattern.split()[0].title() if " " in pattern else pattern.title()
                 entities.append({
-                    "name": pattern.split()[0].title() if " " in pattern else pattern.title(),
+                    "name": name,
                     "type": etype,
                     "confidence": 0.85,
                 })
@@ -302,7 +348,10 @@ class KGService:
                     "confidence": 0.5,
                 })
         
-        # Deduplicate
+        return entities
+    
+    def _deduplicate_entities(self, entities: list[dict]) -> list[dict]:
+        """Remove duplicate entities by name (case-insensitive)."""
         seen = set()
         unique = []
         for e in entities:
@@ -310,7 +359,6 @@ class KGService:
             if key not in seen:
                 seen.add(key)
                 unique.append(e)
-        
         return unique
     
     # -------------------------------------------------------------------------
