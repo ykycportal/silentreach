@@ -19,7 +19,7 @@ class SilentQueue:
     """Queue management for offline scraping."""
     
     def __init__(self, queue_dir: Optional[Path] = None):
-        self.queue_dir = queue_dir or Path.home() / ".silentreach" / "queue"
+        self.queue_dir = Path(queue_dir) if queue_dir else Path.home() / ".silentreach" / "queue"
         self.pending_dir = self.queue_dir / "pending"
         self.running_dir = self.queue_dir / "running"
         self.completed_dir = self.queue_dir / "completed"

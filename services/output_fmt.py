@@ -21,6 +21,12 @@ try:
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     HAS_REPORTLAB = True
 except ImportError:
+    # Try fpdf2 as fallback (lighter dependency)
+    try:
+        from fpdf import FPDF
+        HAS_FPDF = True
+    except ImportError:
+        HAS_FPDF = False
     HAS_REPORTLAB = False
 
 try:
@@ -137,6 +143,34 @@ class OutputFormatter:
         return "\n\n".join(texts)
     
     @staticmethod
+    def _normalize_for_csv_txt(data: Any) -> List[Dict]:
+        """Flatten nested platform data into a list of row dicts for CSV/TXT export."""
+        rows = []
+        if isinstance(data, dict):
+            for platform, results in data.items():
+                if isinstance(results, dict):
+                    # Try common result field names
+                    for key in ['posts', 'videos', 'tweets', 'topics', 'notes', 'profiles', 'data']:
+                        items = results.get(key, [])
+                        if items:
+                            for item in items:
+                                if isinstance(item, dict):
+                                    row = {'platform': platform, **item}
+                                    rows.append(row)
+                            break
+                    # If no recognized key, try the values directly
+                    if not rows or not any(r.get('platform') == platform for r in rows):
+                        for key, value in results.items():
+                            if isinstance(value, list):
+                                for item in value:
+                                    if isinstance(item, dict):
+                                        row = {'platform': platform, **item}
+                                        rows.append(row)
+        elif isinstance(data, list):
+            rows = data
+        return rows
+
+    @staticmethod
     def save_to_file(data: Any, filename: str, format: str = "auto") -> str:
         """
         Save data to file with automatic format detection.
@@ -166,9 +200,13 @@ class OutputFormatter:
         elif fmt in ["md", "markdown"]:
             content = OutputFormatter.to_markdown(data)
         elif fmt == "csv":
-            content = OutputFormatter.to_csv(data)
+            # Flatten nested data structure for CSV export
+            flat_data = OutputFormatter._normalize_for_csv_txt(data)
+            content = OutputFormatter.to_csv(flat_data)
         elif fmt == "txt":
-            content = OutputFormatter.to_text(data)
+            # Flatten nested data structure for TXT export
+            flat_data = OutputFormatter._normalize_for_csv_txt(data)
+            content = OutputFormatter.to_text(flat_data)
         elif fmt == "pdf":
             content = OutputFormatter.to_pdf(data, return_string=True)
         elif fmt == "xlsx":
@@ -190,104 +228,121 @@ class OutputFormatter:
     @staticmethod
     def to_pdf(data: Dict, title: str = "SilentReach Report", filename: str = None, 
                return_string: bool = True) -> Any:
-        """Convert data to PDF format using ReportLab."""
-        if not HAS_REPORTLAB:
-            logger.error("reportlab not installed. Run: pip install reportlab")
-            return None
-        
+        """Convert data to PDF format (reportlab or fpdf2 fallback)."""
         try:
-            # Create buffer for PDF
-            if return_string:
-                buffer = io.BytesIO()
+            # Try reportlab first
+            if HAS_REPORTLAB:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+                from reportlab.lib import colors
+                from reportlab.lib.units import inch
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                
+                buffer = io.BytesIO() if return_string else None
+                if not return_string:
+                    Path(filename).parent.mkdir(parents=True, exist_ok=True)
+                
                 doc = SimpleDocTemplate(
-                    buffer,
+                    buffer if buffer else filename,
                     pagesize=A4,
-                    rightMargin=72,
-                    leftMargin=72,
-                    topMargin=72,
-                    bottomMargin=72
+                    rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72
                 )
-            else:
+                
+                styles = getSampleStyleSheet()
+                title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'],
+                    fontSize=24, spaceAfter=30, textColor=colors.HexColor('#1a1a2e'))
+                subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'],
+                    fontSize=12, textColor=colors.HexColor('#666666'), spaceAfter=20)
+                
+                story = []
+                story.append(Paragraph(title, title_style))
+                story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", subtitle_style))
+                story.append(Spacer(1, 20))
+                
+                if isinstance(data, dict):
+                    for platform, results in data.items():
+                        if isinstance(results, dict):
+                            story.append(Paragraph(platform.capitalize(), styles['Heading2']))
+                            items = results.get('posts', results.get('videos', results.get('tweets', [])))
+                            if items:
+                                table_data = [['Title', 'Author', 'Score', 'Date']]
+                                for item in items[:20]:
+                                    table_data.append([
+                                        str(item.get('title', item.get('text', '')))[:50],
+                                        str(item.get('author', ''))[:20],
+                                        str(item.get('score', item.get('likes', ''))),
+                                        str(item.get('created_at', item.get('timestamp', '')))[:10],
+                                    ])
+                                tbl = Table(table_data, colWidths=[4*inch, 1.5*inch, 1*inch, 1.5*inch])
+                                tbl.setStyle(TableStyle([
+                                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+                                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                                    ('FONTSIZE', (0, 0), (-1, 0), 12),
+                                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                                    ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
+                                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
+                                ]))
+                                story.append(tbl)
+                            else:
+                                story.append(Paragraph(f"No results found for {platform}", styles['Normal']))
+                        story.append(Spacer(1, 20))
+                
+                doc.build(story)
+                if return_string:
+                    buffer.seek(0)
+                    return buffer.read()
+                return filename
+            # Fall back to fpdf2
+            elif HAS_FPDF:
+                from fpdf import FPDF
+                pdf = FPDF()
+                pdf.add_page()
+                # Try to use a Unicode-capable font if available
+                try:
+                    pdf.add_font('DejaVu', '', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf')
+                    pdf.set_font('DejaVu', size=11)
+                except:
+                    pdf.set_font('helvetica', size=11)
+                pdf.set_font('helvetica', size=11)
+                
+                # Title
+                pdf.set_font('helvetica', 'B', size=18)
+                pdf.cell(0, 12, title, new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font('helvetica', size=9)
+                pdf.ln(2)
+                pdf.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", new_x="LMARGIN", new_y="NEXT")
+                pdf.ln(8)
+                
+                if isinstance(data, dict):
+                    for platform, results in data.items():
+                        if isinstance(results, dict):
+                            pdf.set_font('helvetica', 'B', size=12)
+                            pdf.cell(0, 8, platform.capitalize(), new_x="LMARGIN", new_y="NEXT")
+                            pdf.ln(4)
+                            items = results.get('posts', results.get('videos', results.get('tweets', [])))
+                            if items:
+                                pdf.set_font('helvetica', size=9)
+                                for item in items[:30]:
+                                    text = str(item.get('title', item.get('text', '')))[:80]
+                                    author = str(item.get('author', ''))[:20]
+                                    score = str(item.get('score', item.get('likes', '')))
+                                    pdf.cell(0, 5, f"  {text}  |  {author}  |  score={score}", new_x="LMARGIN", new_y="NEXT")
+                                pdf.ln(6)
+                            else:
+                                pdf.set_font('helvetica', size=10)
+                                pdf.cell(0, 6, f"  No results for {platform}", new_x="LMARGIN", new_y="NEXT")
+                                pdf.ln(6)
+                
+                if return_string:
+                    return pdf.output(dest='S')
                 Path(filename).parent.mkdir(parents=True, exist_ok=True)
-                doc = SimpleDocTemplate(
-                    filename,
-                    pagesize=A4,
-                    rightMargin=72,
-                    leftMargin=72,
-                    topMargin=72,
-                    bottomMargin=72
-                )
-            
-            # Get styles
-            styles = getSampleStyleSheet()
-            title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
-                fontSize=24,
-                spaceAfter=30,
-                textColor=colors.HexColor('#1a1a2e')
-            )
-            subtitle_style = ParagraphStyle(
-                'Subtitle',
-                parent=styles['Normal'],
-                fontSize=12,
-                textColor=colors.HexColor('#666666'),
-                spaceAfter=20
-            )
-            
-            # Build document
-            story = []
-            
-            # Title
-            story.append(Paragraph(title, title_style))
-            story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", subtitle_style))
-            story.append(Spacer(1, 20))
-            
-            # Process data
-            if isinstance(data, dict):
-                for platform, results in data.items():
-                    if isinstance(results, dict):
-                        story.append(Paragraph(platform.capitalize(), styles['Heading2']))
-                        
-                        items = results.get('posts', results.get('videos', results.get('tweets', [])))
-                        if items:
-                            # Create table
-                            table_data = [['Title', 'Author', 'Score', 'Date']]
-                            for item in items[:20]:  # Limit to 20 items
-                                row = [
-                                    str(item.get('title', item.get('text', '')))[:50],
-                                    str(item.get('author', ''))[:20],
-                                    str(item.get('score', item.get('likes', ''))),
-                                    str(item.get('created_at', item.get('timestamp', '')))[:10],
-                                ]
-                                table_data.append(row)
-                            
-                            table = Table(table_data, colWidths=[4*inch, 1.5*inch, 1*inch, 1.5*inch])
-                            table.setStyle(TableStyle([
-                                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-                                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                                ('FONTSIZE', (0, 0), (-1, 0), 12),
-                                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
-                                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
-                            ]))
-                            story.append(table)
-                        else:
-                            story.append(Paragraph(f"No results found for {platform}", styles['Normal']))
-                    
-                    story.append(Spacer(1, 20))
-            
-            # Build PDF
-            doc.build(story)
-            
-            if return_string:
-                buffer.seek(0)
-                return buffer.read()
-            
-            return filename
-            
+                pdf.output(filename)
+                return filename
+            else:
+                logger.error("Neither reportlab nor fpdf2 is installed. Run: pip install fpdf2")
+                return None
         except Exception as e:
             logger.error(f"PDF generation failed: {e}")
             return None

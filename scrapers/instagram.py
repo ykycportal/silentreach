@@ -170,23 +170,21 @@ class InstagramScraper:
 
         soup = BeautifulSoup(content, "html.parser")
 
-        # Profile stats - different selectors for posts vs followers
-        # Instagram uses nested divs with specific classes
-        stats_containers = soup.select("ul[class*='gdHQl'] li span") or soup.select('[class*="g47SY"]')
-
-        # Try to find specific elements by context
+        # Profile stats - use semantic selectors, fallback to any number-like text
+        # Instagram stats are in a nav with li > span pattern
+        stats_nav = soup.select_one("nav[class*='k-CY']") or soup.select_one("ul[class*='gdHQl']")
         posts = 0
         followers = 0
-
-        # Look for posts count (usually first number in stats)
-        for elem in stats_containers:
-            text = elem.get_text(strip=True)
-            if text and text.replace(',', '').isdigit():
-                num = int(text.replace(',', ''))
-                if num > 1000:  # Likely followers
-                    followers = num
-                elif posts == 0:  # First number is posts
-                    posts = num
+        if stats_nav:
+            spans = stats_nav.select("li span")
+            for i, elem in enumerate(spans):
+                text = elem.get_text(strip=True)
+                if text and text.replace(',', '').isdigit():
+                    num = int(text.replace(',', ''))
+                    if i == 0:
+                        posts = num
+                    elif num > 100:
+                        followers = num
 
         # Fallback: try meta tags
         if not posts:

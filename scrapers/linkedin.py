@@ -136,6 +136,10 @@ class LinkedInScraper:
         
         return profiles
     
+    async def search(self, query: str, limit: int = 20) -> dict:
+        """Search LinkedIn profiles (public only)."""
+        return await self.search_public(query, limit)
+
     def _parse_profile(self, content: str) -> dict:
         """Parse individual LinkedIn profile."""
         from bs4 import BeautifulSoup

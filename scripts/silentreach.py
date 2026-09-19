@@ -12,12 +12,14 @@ from pathlib import Path
 from datetime import datetime
 
 # Configure logging
+_log_dir = Path.home() / ".silentreach"
+_log_dir.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("silentreach.log")
+        logging.FileHandler(str(_log_dir / "silentreach.log"))
     ]
 )
 logger = logging.getLogger("silentreach")
@@ -209,8 +211,9 @@ async def cmd_intel(args):
     
     for platform in platforms:
         try:
-            module_path, class_name = f"scrapers.{platform}.{platform.capitalize()}{platform.capitalize()}Scraper".rsplit(".", 1)
-            module = __import__(module_path, fromlist=[class_name])
+            # Scrapers live at scrapers.XXX, not scrapers.XXX.XXXScraper
+            module = __import__(f"scrapers.{platform}", fromlist=["Scraper"])
+            class_name = f"{platform.capitalize()}Scraper"
             ScraperClass = getattr(module, class_name)
             
             scraper = ScraperClass(config)
@@ -442,8 +445,8 @@ async def cmd_login(args):
     module_path, class_name = login_methods[platform]
     module = __import__(module_path, fromlist=[class_name])
     ScraperClass = getattr(module, class_name)
-    
-    scraper = ScraperClass()
+
+    scraper = ScraperClass(config=load_config())
     
     print(f"\n🔐 Logging into {platform.capitalize()}...")
     print("Note: This will open a browser window for you to log in.\n")
@@ -730,8 +733,8 @@ async def cmd_queue_process(args):
         module_name = f"scrapers.{job['platform']}"
         module = __import__(module_name, fromlist=["Scraper"])
         ScraperClass = getattr(module, f"{job['platform'].capitalize()}Scraper")
-        
-        scraper = ScraperClass()
+
+        scraper = ScraperClass(config=load_config())
         result = await scraper.search(job["query"], limit=job.get("limit", 20))
         
         # Complete job

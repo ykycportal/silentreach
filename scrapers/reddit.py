@@ -26,7 +26,7 @@ class RedditScraper:
         
         # Try rdt-cli first (primary method)
         rdt_result = await self._search_rdt(query, limit)
-        if rdt_result and len(rdt_result.get("posts", [])) > 0:
+        if rdt_result and rdt_result.get("posts"):
             return rdt_result
         
         # Fallback to nodriver
@@ -150,7 +150,7 @@ class RedditScraper:
         soup = BeautifulSoup(html, "html.parser")
         
         # Reddit post containers
-        post_containers = soup.select(".Post, article, [data-testid='post-container']")
+        post_containers = soup.select("article[data-testid='postContainer'], div[data-testid='feedItem']")
         
         for container in post_containers[:30]:
             title_elem = container.select_one(".PostTitle, .title, h1, h2, a")

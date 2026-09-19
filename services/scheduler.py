@@ -244,21 +244,26 @@ class SilentScheduler:
     def _create_job_script(self, name: str, command: str) -> str:
         """Create a wrapper script for a job."""
         script_path = self.jobs_dir / f"{name}.sh"
-        
-        script_content = f"""#!/data/data/com.termux/files/usr/bin/bash
+
+        import platform
+        if "termux" in platform.platform().lower():
+            shebang = "/data/data/com.termux/files/usr/bin/bash"
+        else:
+            shebang = "/bin/bash"
+
+        script_content = f"""{shebang}
 # SilentReach Job: {name}
 # Generated: {datetime.now().isoformat()}
 
-cd ~/silentreach
+cd {Path.home() / 'silentreach'}
 {command}
 """
-        
         with open(script_path, "w") as f:
             f.write(script_content)
-        
+
         subprocess.run(["chmod", "+x", script_path])
-        
-        return f"/data/data/com.termux/files/home/.silentreach/jobs/{name}.sh"
+
+        return str(script_path)
     
     def _save_job_config(
         self,
@@ -360,7 +365,9 @@ def preset_commands():
 
 if __name__ == "__main__":
     # Test scheduler
-    scheduler = SilentScheduler()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        scheduler = SilentScheduler()
     
     print("=== SilentReach Scheduler Test ===\n")
     
