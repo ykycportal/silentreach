@@ -247,19 +247,46 @@ class KGService:
     def _try_semantica_extract(self, text: str) -> list[dict]:
         """Try to extract entities using Semantica LLM. Returns empty list if unavailable."""
         try:
-            from semantica.semantic_extract import SemanticExtractor
+            from semantica.semantic_extract import NamedEntityRecognizer, TripletExtractor
             
-            extractor = SemanticExtractor()
-            # Process in batch for efficiency
-            result = extractor.process_batch([text])
+            # Extract entities
+            ner = NamedEntityRecognizer(confidence_threshold=0.6)
+            entity_result = ner.extract_entities(text)
             
             entities = []
-            for entity in result.get("entities", []):
+            for entity in entity_result.get("entities", []) if isinstance(entity_result, dict) else []:
                 entities.append({
-                    "name": entity.get("text", ""),
-                    "type": entity.get("label", "Entity"),
-                    "confidence": entity.get("confidence", 0.8),
+                    "name": entity.get("text", "") if isinstance(entity, dict) else str(entity),
+                    "type": entity.get("label", "Entity") if isinstance(entity, dict) else "Entity",
+                    "confidence": entity.get("confidence", 0.7) if isinstance(entity, dict) else 0.7,
                 })
+            
+            # Also extract triplets
+            triplet_extractor = TripletExtractor()
+            try:
+                triplet_result = triplet_extractor.extract_triplets(text)
+                
+                # Handle different return types
+                if hasattr(triplet_result, '__iter__'):
+                    for triplet in triplet_result:
+                        try:
+                            subj = getattr(triplet, 'subject', None) or (triplet[0] if len(triplet) > 0 else None)
+                            pred = getattr(triplet, 'predicate', None) or (triplet[1] if len(triplet) > 1 else None)
+                            obj = getattr(triplet, 'object', None) or (triplet[2] if len(triplet) > 2 else None)
+                            
+                            if subj and pred and obj:
+                                self._relations.append({
+                                    "subject": str(subj),
+                                    "predicate": str(pred),
+                                    "object": str(obj),
+                                    "source_platform": "semantica",
+                                    "source_url": "",
+                                    "recorded_at": datetime.utcnow().isoformat(),
+                                })
+                        except (TypeError, IndexError):
+                            continue
+            except Exception:
+                pass  # Triplet extraction is optional
             
             if entities:
                 logger.debug(f"Extracted {len(entities)} entities via Semantica")
