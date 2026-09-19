@@ -142,18 +142,52 @@ All platforms get these features:
 
 ---
 
-## 📦 Platform Support Matrix
+## 📦 Supported Platforms
 
-| Feature | Android/Termux | Windows | macOS | Linux |
-|---------|---------------|---------|-------|-------|
-| **Core Scrapers** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
-| **Output Formats** | ✅ 7 formats | ✅ 7 formats | ✅ 7 formats | ✅ 7 formats |
-| **Stealth Browser** | ✅ nodriver | ✅ nodriver | ✅ nodriver | ✅ nodriver |
-| **Notifications** | ✅ Termux:API | ❌ Skip | ❌ Skip | ❌ Skip |
-| **Background Cron** | ✅ Native | ⚠️ Task Scheduler | ⚠️ launchd | ✅ cron/systemd |
-| **Offline Queue** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
-| **Web Dashboard** | ✅ Full | ✅ Full | ✅ Full | ✅ Full |
-| **One-Click Install** | ✅ `install.sh` | ⚠️ Manual | ⚠️ Manual | ⚠️ Manual |
+SilentReach supports **10 platforms** with full scraping, stealth features, and cross-platform compatibility:
+
+| Platform | API Method | Browser Fallback | Auth Required | Best For |
+|----------|------------|------------------|---------------|----------|
+| **Reddit** | rdt-cli + API | ✅ nodriver | Optional | Community sentiment, trends |
+| **YouTube** | yt-dlp direct | ❌ N/A | No | Video content analysis |
+| **Twitter/X** | twitter-cli + API | ✅ nodriver | Required | Real-time buzz, influencer tracking |
+| **Instagram** | Node browser only | ✅ nodriver (headful) | Required | Visual content, influencer marketing |
+| **LinkedIn** | Jina Reader + API | ✅ nodriver | Required | B2B insights, professional trends |
+| **Facebook** | Browser automation | ✅ nodriver | Required | Group sentiment, ad research |
+| **Bilibili** | bili-cli + yt-dlp | ❌ N/A | Optional | Chinese market, Asian trends |
+| **V2EX** | agent-reach | ❌ N/A | No | Tech community, developer insights |
+| **Xiaohongshu** | Node browser only | ✅ nodriver (headful) | Required | Chinese lifestyle, reviews |
+| **RSS Feeds** | feedparser | ❌ N/A | No | News aggregation, curated sources |
+
+### Platform Status Legend
+
+- ✅ **Full Support** — Works on all platforms (Android, Windows, macOS, Linux)
+- ⚠️ **Partial Support** — Some features limited on certain platforms
+- ❌ **Not Available** — Not applicable for this platform type
+
+### Platform-Specific Notes
+
+**Mobile-Optimized Platforms (Termux):**
+- Reddit, Twitter, YouTube — Highest success rate on mobile IPs
+- Instagram — Requires headful browser (opens Chrome window)
+- Xiaohongshu — Chinese platform, best accessed from Asian IPs
+
+**Desktop-Optimized:**
+- LinkedIn — Higher rate limits, needs professional context
+- Bilibili — Chinese platform, benefits from regional proxies
+
+### How to Use
+
+```bash
+# Search all platforms
+silentreach search "dropshipping" -p all
+
+# Specific platforms
+silentreach search "AI tools" -p reddit,twitter,youtube
+
+# With exports
+silentreach kg build "marketing trends" -p reddit,linkedin,twitter
+```
 
 ---
 
