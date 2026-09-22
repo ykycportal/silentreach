@@ -6,6 +6,7 @@ Scrapes competitors by location, product, and supplier relationships
 import asyncio
 import logging
 import json
+import io
 from typing import Optional, List, Dict, Set
 from pathlib import Path
 from datetime import datetime
@@ -285,6 +286,148 @@ class CompetitorScraper:
             "supplier_network": self.get_supplier_network(),
         }
         return report
+    
+    def to_markdown(self, name: str = None) -> str:
+        """Generate human-readable markdown report."""
+        if name and name in self.results:
+            profiles = {name: self.results[name]}
+        else:
+            profiles = self.results
+        
+        lines = [
+            "# 🎯 Competitor Intelligence Report",
+            f"\n**Generated:** {datetime.now().strftime('%B %d, %Y at %H:%M')}",
+            f"**Total Competitors Tracked:** {len(profiles)}",
+            "",
+            "---",
+            "",
+        ]
+        
+        for comp_name, profile in profiles.items():
+            lines.extend([
+                f"## {profile.name}",
+                "",
+                f"**Source:** SilentReach Multi-Platform Analysis",
+                f"**Scraped:** {profile.scraped_at[:19]}",
+                "",
+                "### Overview",
+                "",
+                f"- **Name:** {profile.name}",
+                f"- **Location:** {profile.location or 'Not detected'}",
+                f"- **Products:** {len(profile.products)} detected",
+                f"- **Suppliers:** {len(profile.suppliers)} identified",
+                f"- **Social Mentions:** {len(profile.mentions)} across platforms",
+                "",
+            ])
+            
+            if profile.products:
+                lines.extend([
+                    "### Products & Offerings",
+                    "",
+                ])
+                for prod in profile.products[:10]:
+                    lines.append(f"- {prod}")
+                lines.append("")
+            
+            if profile.suppliers:
+                lines.extend([
+                    "### Supply Chain / Suppliers",
+                    "",
+                    "| Supplier | Confidence | Detected |",
+                    "|----------|------------|----------|",
+                ])
+                for s in sorted(profile.suppliers, key=lambda x: x['confidence'], reverse=True)[:10]:
+                    lines.append(f"| {s['name']} | {s['confidence']:.0%} | {s.get('detected_at', 'N/A')[:10]} |")
+                lines.append("")
+            
+            if profile.location:
+                lines.extend([
+                    "### Geographic Presence",
+                    "",
+                    f"**Detected Location:** {profile.location}",
+                    "",
+                ])
+            
+            if profile.mentions:
+                lines.extend([
+                    "### Recent Mentions",
+                    "",
+                ])
+                for m in profile.mentions[-10:]:
+                    lines.append(f"- **[{m['source']}]** {m['text'][:120]}...")
+                lines.append("")
+            
+            lines.extend(["---", ""])
+        
+        # Supplier network summary
+        supplier_network = self.get_supplier_network()
+        if supplier_network:
+            lines.extend([
+                "## 🔗 Shared Supplier Network",
+                "",
+                "| Supplier | Competitors Using |",
+                "|----------|-------------------|",
+            ])
+            for supplier, competitors in sorted(supplier_network.items()):
+                lines.append(f"| {supplier} | {', '.join(competitors)} |")
+            lines.append("")
+        
+        return "\n".join(lines)
+    
+    def to_pdf(self, filename: str = None) -> bytes:
+        """Generate PDF report."""
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib import colors
+            from reportlab.lib.units import inch
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                                   rightMargin=72, leftMargin=72, 
+                                   topMargin=72, bottomMargin=72)
+            
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'],
+                fontSize=24, spaceAfter=30, textColor=colors.HexColor('#1a1a2e'))
+            subtitle_style = ParagraphStyle('Subtitle', parent=styles['Normal'],
+                fontSize=11, textColor=colors.HexColor('#666666'))
+            
+            story = []
+            story.append(Paragraph("🎯 Competitor Intelligence Report", title_style))
+            story.append(Paragraph(f"Generated: {datetime.now().strftime('%B %d, %Y at %H:%M')}", subtitle_style))
+            story.append(Spacer(1, 20))
+            
+            for comp_name, profile in self.results.items():
+                story.append(Paragraph(profile.name, styles['Heading2']))
+                story.append(Paragraph(f"Location: {profile.location or 'Unknown'}", styles['Normal']))
+                story.append(Paragraph(f"Products: {len(profile.products)} | Suppliers: {len(profile.suppliers)} | Mentions: {len(profile.mentions)}", styles['Normal']))
+                story.append(Spacer(1, 10))
+                
+                if profile.suppliers:
+                    story.append(Paragraph("Key Suppliers:", styles['Heading3']))
+                    supplier_data = [['Supplier', 'Confidence']]
+                    for s in sorted(profile.suppliers, key=lambda x: x['confidence'], reverse=True)[:5]:
+                        supplier_data.append([s['name'], f"{s['confidence']:.0%}"])
+                    tbl = Table(supplier_data)
+                    tbl.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                        ('FONTSIZE', (0, 0), (-1, -1), 9),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                    ]))
+                    story.append(tbl)
+                
+                story.append(Spacer(1, 20))
+            
+            doc.build(story)
+            return buffer.getvalue()
+        except Exception as e:
+            logger.error(f"PDF generation failed: {e}")
+            return b""
 
 
 class CompetitorTracker:

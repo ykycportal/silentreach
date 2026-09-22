@@ -552,7 +552,7 @@ def main():
     competitor_parser.add_argument("--location", "-l", help="Filter by location (e.g., 'China', 'USA')")
     competitor_parser.add_argument("--product", "-p", help="Filter by product category")
     competitor_parser.add_argument("--save", "-s", action="store_true", help="Save to competitor database")
-    competitor_parser.add_argument("--report", "-r", choices=["json", "pdf", "docx", "md"], default="json",
+    competitor_parser.add_argument("--report", "-r", choices=["json", "md", "pdf", "docx"], default="json",
                                    help="Output format for report")
     competitor_parser.add_argument("--output", "-o", help="Save report to file")
     competitor_parser.set_defaults(func=cmd_competitor)
@@ -1121,6 +1121,8 @@ async def cmd_competitor(args):
             print(f"⚠️  No products matching '{args.product}' found")
     
     # Generate report
+    report_format = getattr(args, 'report', 'json')
+    
     print("\n📊 Competitor Profile:")
     print(f"   Name: {profile.name}")
     print(f"   Location: {profile.location or 'Not detected'}")
@@ -1129,30 +1131,19 @@ async def cmd_competitor(args):
     print(f"   Mentions: {len(profile.mentions)} across platforms")
     
     # Format output
-    if getattr(args, 'report', 'json') == "json":
+    if report_format == "json":
         report = scraper.generate_report(format="json")
         print("\n" + json.dumps(report, indent=2))
-    elif getattr(args, 'report', 'json') == "md":
-        lines = [
-            f"# Competitor Report: {args.name}",
-            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-            "",
-            "## Overview",
-            f"- **Name**: {profile.name}",
-            f"- **Location**: {profile.location or 'Unknown'}",
-            f"- **Products**: {', '.join(profile.products[:5]) or 'None detected'}",
-            f"- **Suppliers**: {len(profile.suppliers)} detected",
-            "",
-            "## Suppliers",
-        ]
-        for s in profile.suppliers[:10]:
-            lines.append(f"- {s['name']} (confidence: {s['confidence']:.0%})")
-        
-        lines.extend(["", "## Recent Mentions"])
-        for m in profile.mentions[-5:]:
-            lines.append(f"- **{m['source']}**: {m['text'][:100]}...")
-        
-        print("\n" + "\n".join(lines))
+    elif report_format == "md":
+        markdown = scraper.to_markdown()
+        print("\n" + markdown)
+    elif report_format == "pdf":
+        pdf_bytes = scraper.to_pdf()
+        if pdf_bytes:
+            print(f"\n[✓] PDF generated ({len(pdf_bytes)} bytes)")
+            print("[i] Use -o flag to save to file")
+        else:
+            print("\n[!] PDF generation failed")
     
     # Save to database if requested
     if getattr(args, 'save', False):
@@ -1163,12 +1154,18 @@ async def cmd_competitor(args):
     # Save to file if requested
     if hasattr(args, 'output') and args.output:
         filepath = Path(args.output)
-        report = scraper.generate_report()
-        with open(filepath, "w") as f:
-            if getattr(args, 'report', 'json') == "json":
-                json.dump(report, f, indent=2, default=str)
-            else:
-                f.write("\n".join(lines))
+        if report_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(scraper.generate_report(), f, indent=2, default=str)
+        elif report_format == "md":
+            with open(filepath, "w") as f:
+                f.write(scraper.to_markdown())
+        elif report_format == "pdf":
+            pdf_bytes = scraper.to_pdf()
+            if pdf_bytes:
+                with open(filepath, "wb") as f:
+                    f.write(pdf_bytes)
+                print(f"[✓] PDF saved to {filepath}")
         print(f"[✓] Report saved to {filepath}")
 
 
