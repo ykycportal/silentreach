@@ -570,7 +570,23 @@ def main():
     # Notify command
     notify_parser = subparsers.add_parser("notify", help="Send test notification")
     notify_parser.add_argument("message", nargs="?", default="SilentReach is working!", help="Notification message")
+    notify_parser.add_argument("--platform", "-p", choices=["telegram", "termux", "both"], default="both",
+                               help="Notification platform")
     notify_parser.set_defaults(func=cmd_notify)
+    
+    # Telegram setup command
+    telegram_parser = subparsers.add_parser("telegram", help="Configure Telegram notifications")
+    telegram_sub = telegram_parser.add_subparsers(dest="telegram_action")
+    
+    # Setup Telegram
+    setup_parser = telegram_sub.add_parser("setup", help="Setup Telegram bot")
+    setup_parser.add_argument("--token", "-t", required=True, help="Bot token from @BotFather")
+    setup_parser.add_argument("--chat-id", "-c", required=True, help="Your chat ID")
+    setup_parser.set_defaults(func=cmd_telegram_setup)
+    
+    # Test Telegram
+    test_parser = telegram_sub.add_parser("test", help="Send test message")
+    test_parser.set_defaults(func=cmd_telegram_test)
     
     # Competitor command
     competitor_parser = subparsers.add_parser("competitor", help="Competitor intelligence scraping")
@@ -697,22 +713,44 @@ async def cmd_schedule_add(args):
     """Add a scheduled job."""
     from services.scheduler import get_scheduler
     from services.notifications import notify_success, notify_error
+    from services.telegram import notify_telegram
+    import asyncio
     
     scheduler = get_scheduler()
+    
+    # Check for preset names
+    presets = {
+        "daily": ("0 8 * * *", "silentreach intel daily-trends --depth quick -o ~/silentreach/reports/daily.md", "Daily intelligence summary"),
+        "weekly": ("0 9 * * 1", "silentreach intel weekly-summary --depth full -o ~/silentreach/reports/weekly.md", "Weekly deep-dive report"),
+        "competitor_daily": ("0 7 * * *", "silentreach competitor daily-check --save", "Daily competitor monitoring"),
+    }
+    
+    if args.name in presets:
+        cron, command, desc = presets[args.name]
+        print(f"ℹ️  Using preset '{args.name}'")
+        print(f"   Cron: {cron}")
+        print(f"   Command: {command}")
+        args.cron = cron
+        args.command = command
+        args.description = desc
     
     success = scheduler.add_job(
         name=args.name,
         cron_expr=args.cron,
         command=args.command,
-        description=args.description or ""
+        description=args.description or "",
     )
     
     if success:
         print(f"✅ Added job '{args.name}' with cron: {args.cron}")
-        notify_success("Scheduler Updated", f"Added job: {args.name}")
+        print(f"   Command: {args.command}")
+        if args.description:
+            print(f"   Description: {args.description}")
+        
+        # Send Telegram notification if configured
+        asyncio.run(notify_telegram(f"📅 Scheduled job added: {args.name}\n{args.cron} - {args.command}"))
     else:
         print(f"❌ Failed to add job '{args.name}'")
-        notify_error("Scheduler Error", f"Failed to add job: {args.name}")
 
 
 async def cmd_schedule_remove(args):
@@ -752,16 +790,76 @@ async def cmd_schedule_run(args):
 async def cmd_notify(args):
     """Send test notification."""
     from services.notifications import notify_success, check_termux_api
+    from services.telegram import get_telegram_notifier
+    import asyncio
     
-    api_status = check_termux_api()
+    platform = getattr(args, 'platform', 'both')
     
-    if not api_status["available"]:
-        print("❌ Termux:API not installed")
-        print("Install with: pkg install termux-api")
-        return
+    # Termux notification
+    if platform in ["termux", "both"]:
+        api_status = check_termux_api()
+        if api_status["available"]:
+            notify_success("SilentReach", args.message)
+            print(f"✅ Termux notification sent: {args.message}")
+        else:
+            print("⚠️  Termux:API not installed. Use --platform telegram instead.")
     
-    notify_success("SilentReach", args.message)
-    print(f"✅ Notification sent: {args.message}")
+    # Telegram notification
+    if platform in ["telegram", "both"]:
+        tg = get_telegram_notifier()
+        success = asyncio.run(tg.send_alert("SilentReach", args.message))
+        if success:
+            print(f"✅ Telegram notification sent: {args.message}")
+        else:
+            print(f"⚠️  Telegram not configured. Use: silentreach telegram setup")
+
+
+async def cmd_telegram_setup(args):
+    """Setup Telegram notifications."""
+    from services.telegram import TelegramNotifier
+    from pathlib import Path
+    import yaml
+    
+    # Save config
+    config_path = Path.home() / ".silentreach" / "config.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    config = {}
+    if config_path.exists():
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f) or {}
+        except:
+            config = {}
+    
+    if "telegram" not in config:
+        config["telegram"] = {}
+    
+    config["telegram"]["token"] = args.token
+    config["telegram"]["chat_id"] = args.chat_id
+    
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
+    
+    print("✅ Telegram configured!")
+    print(f"   Token: {args.token[:10]}...")
+    print(f"   Chat ID: {args.chat_id}")
+    print("\n💡 Test with: silentreach telegram test")
+
+
+async def cmd_telegram_test(args):
+    """Send test Telegram message."""
+    from services.telegram import get_telegram_notifier
+    import asyncio
+    
+    tg = get_telegram_notifier()
+    success = await tg.send_alert("SilentReach", "🎉 Telegram notifications are working!")
+    
+    if success:
+        print("✅ Test message sent to Telegram!")
+    else:
+        print("❌ Failed to send test message.")
+        print("   Configure with: silentreach telegram setup --token <TOKEN> --chat-id <CHAT_ID>")
 
 
 # Queue commands

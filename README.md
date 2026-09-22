@@ -144,7 +144,7 @@ All platforms get these features:
 
 ## 📦 Supported Platforms
 
-SilentReach supports **10 platforms** with full scraping, stealth features, and cross-platform compatibility:
+SilentReach supports **11 platforms** with full scraping, stealth features, and cross-platform compatibility:
 
 | Platform | API Method | Browser Fallback | Auth Required | Best For |
 |----------|------------|------------------|---------------|----------|
@@ -187,6 +187,44 @@ silentreach search "AI tools" -p reddit,twitter,youtube
 
 # With exports
 silentreach kg build "marketing trends" -p reddit,linkedin,twitter
+```
+
+---
+
+## 🔔 Notifications & Alerts
+
+### Telegram Integration
+
+Get real-time alerts sent directly to your Telegram:
+
+```bash
+# Setup Telegram bot (get token from @BotFather)
+silentreach telegram setup --token YOUR_BOT_TOKEN --chat-id YOUR_CHAT_ID
+
+# Test notification
+silentreach telegram test
+
+# Send notifications
+silentreach notify "Daily report ready" --platform telegram
+```
+
+### Scheduled Jobs
+
+Set up automated daily/weekly reports:
+
+```bash
+# Quick start with presets
+silentreach schedule add daily       # Daily at 8am
+silentreach schedule add weekly      # Weekly on Mondays
+silentreach schedule add competitor_daily  # Daily competitor check
+
+# Custom schedule
+silentreach schedule add "my-job" "0 9 * * *" --command "silentreach search 'topic' -p all"
+
+# Manage jobs
+silentreach schedule list
+silentreach schedule remove my-job
+silentreach schedule run my-job     # Run immediately
 ```
 
 ---
