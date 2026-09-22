@@ -30,6 +30,7 @@ class AirbnbHost:
         self.phone = ""
         self.whatsapp = ""
         self.contact_info = {}
+        self.uses_gas = False  # NEW: Track gas usage
         self.scraped_at = datetime.now().isoformat()
     
     def add_listing(self, listing: dict):
@@ -71,6 +72,33 @@ class AirbnbHost:
                     if 'whatsapp' in text.lower():
                         self.whatsapp = phone
                     break
+        
+        # Detect gas usage in listing
+        self.uses_gas = self._detect_gas_usage(text)
+    
+    def _detect_gas_usage(self, text: str) -> bool:
+        """Detect if property uses gas cylinders/propane."""
+        gas_indicators = [
+            'gas bottle', 'gas cylinder', 'gas canister',
+            'propane tank', 'lpg', 'cooking gas',
+            'gas heater', 'gas stove', 'gas cooktop',
+            'kitchen gas', 'refill gas', 'gas refill',
+            'butane', 'empty gas', 'run out of gas',
+        ]
+        electric_only = ['electric only', 'induction only', 'no gas', 'all electric']
+        
+        text_lower = text.lower()
+        
+        # Check for gas indicators
+        has_gas = any(indicator in text_lower for indicator in gas_indicators)
+        
+        # Check for electric-only (override)
+        has_electric_only = any(indicator in text_lower for indicator in electric_only)
+        
+        if has_electric_only:
+            return False
+        
+        return has_gas
     
     def to_dict(self) -> dict:
         return {
@@ -79,6 +107,7 @@ class AirbnbHost:
             "email": self.email,
             "phone": self.phone,
             "whatsapp": self.whatsapp,
+            "uses_gas": self.uses_gas,
             "listings_count": len(self.listings),
             "listings": self.listings,
             "location": self.location,
@@ -107,11 +136,15 @@ class AirbnbHost:
         # High rating = quality host (may invest in property)
         score += int(self.average_rating * 2)
         
+        # Gas usage = HIGH PRIORITY (pain point!)
+        if self.uses_gas:
+            score += 50  # Big bonus - they have a problem we solve!
+        
         # Bonus for having contact info (easier to reach)
         if self.email or self.phone:
             score += 10
         
-        return score
+        return min(score, 100)
     
     def generate_proposal_message(self, product: str = "Windmill + Battery System") -> str:
         """Generate personalized outreach message."""
@@ -443,7 +476,17 @@ class AirbnbScraper:
             "",
         ]
         
-        for host_id, host in sorted(self.hosts.items(), 
+        # Summary by gas usage
+        gas_hosts = [h for h in self.hosts.values() if h.uses_gas]
+        electric_hosts = [h for h in self.hosts.values() if not h.uses_gas]
+        
+        lines.append("## 📊 Lead Summary")
+        lines.append(f"- **Total Hosts:** {len(self.hosts)}")
+        lines.append(f"- **🔥 Gas Users (Priority Targets):** {len(gas_hosts)} ← Message them about conversion!")
+        lines.append(f"- **⚡ Electric/Solar Users:** {len(electric_hosts)}")
+        lines.append("")
+        
+        for host_id, host in sorted(self.hosts.items(),
                                     key=lambda x: x[1].generate_lead_score(), reverse=True):
             score = host.generate_lead_score()
             action = self._get_action(score)
