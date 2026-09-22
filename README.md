@@ -97,30 +97,43 @@ silentreach search "dropshipping" -p reddit,youtube --limit 10
 
 These features only work on Android/Termux:
 
-| Feature | Description |
-|---------|-------------|
-| **🔔 Push Notifications** | Get alerts on your phone when scans complete (via Termux:API) |
-| **⏰ Persistent Background Jobs** | Cron jobs survive terminal close and reboots |
-| **📥 Offline Queue** | Queue searches while on cellular, auto-process when WiFi returns |
-| **🔋 Battery Optimization** | Built-in wake-lock and power management |
-| **📊 Web Dashboard** | Monitor from any browser on your network |
+|| Feature | Description |
+||---------|-------------|
+|| **🔔 Telegram Alerts** | Get real-time notifications on your phone via Telegram bot |
+|| **⏰ Scheduled Reports** | Daily/weekly automated intelligence reports |
+|| **📥 Offline Queue** | Queue searches while on cellular, auto-process when WiFi returns |
+|| **🔋 Battery Optimization** | Built-in wake-lock and power management |
+|| **📊 Web Dashboard** | Monitor from any browser on your network |
 
-### Enable Notifications (Termux Only)
+### Setup Telegram Notifications (Termux + Any Device)
 
 ```bash
-pkg install termux-api
-silentreach notify "Hello from SilentReach!"
+# Get a bot token from @BotFather on Telegram
+# Then configure:
+silentreach telegram setup --token YOUR_BOT_TOKEN --chat-id YOUR_CHAT_ID
+
+# Test it works:
+silentreach telegram test
+
+# Receive daily reports automatically
+silentreach schedule add daily
 ```
 
-### Schedule Background Jobs (Termux Only)
+### Automated Daily Reports
 
 ```bash
-# Add daily job (survives terminal close)
-silentreach schedule add daily_monitor "0 8 * * *" \
-  --command "silentreach search 'dropshipping' -p reddit,youtube"
+# Preset schedules (run automatically)
+silentreach schedule add daily       # Every day at 8am
+silentreach schedule add weekly      # Every Monday at 9am
+silentreach schedule add competitor_daily  # Daily competitor tracking
 
-# Jobs run automatically even when terminal is closed
+# Or create custom schedule
+silentreach schedule add "my-research" "0 9 * * *" \
+  --command "silentreach search 'dropshipping' -p reddit,twitter"
+
+# View and manage
 silentreach schedule list
+silentreach schedule run daily       # Run now
 ```
 
 ---
@@ -191,41 +204,57 @@ silentreach kg build "marketing trends" -p reddit,linkedin,twitter
 
 ---
 
-## 🔔 Notifications & Alerts
+## 🔔 Real-Time Alerts & Automation
 
-### Telegram Integration
+### Telegram Notifications
 
-Get real-time alerts sent directly to your Telegram:
+Get instant alerts delivered to your Telegram when:
+- Scraping jobs complete
+- Competitor changes detected
+- Daily/weekly reports ready
+- Conflicts found in intelligence
 
 ```bash
-# Setup Telegram bot (get token from @BotFather)
-silentreach telegram setup --token YOUR_BOT_TOKEN --chat-id YOUR_CHAT_ID
+# One-time setup (requires @BotFather token)
+silentreach telegram setup --token BOT_TOKEN --chat-id CHAT_ID
 
-# Test notification
+# Test the connection
 silentreach telegram test
 
-# Send notifications
-silentreach notify "Daily report ready" --platform telegram
+# Send custom alerts
+silentreach notify "New competitor alert!" --platform telegram
 ```
 
-### Scheduled Jobs
+### Scheduled Intelligence Reports
 
-Set up automated daily/weekly reports:
+Automate your marketing research with cron-based scheduling:
+
+| Preset | Schedule | What It Does |
+|--------|----------|--------------|
+| `daily` | 8:00 AM daily | Quick trend scan across Reddit, YouTube, Twitter |
+| `weekly` | 9:00 AM Monday | Full intelligence report with deep analysis |
+| `competitor_daily` | 7:00 AM daily | Monitor competitors for supplier changes |
 
 ```bash
-# Quick start with presets
-silentreach schedule add daily       # Daily at 8am
-silentreach schedule add weekly      # Weekly on Mondays
-silentreach schedule add competitor_daily  # Daily competitor check
+# Activate a preset
+silentreach schedule add daily
 
-# Custom schedule
-silentreach schedule add "my-job" "0 9 * * *" --command "silentreach search 'topic' -p all"
+# Or create custom schedule
+silentreach schedule add "hourly-check" "0 * * * *" \
+  --command "silentreach search 'new products' -p reddit,twitter"
 
-# Manage jobs
-silentreach schedule list
-silentreach schedule remove my-job
-silentreach schedule run my-job     # Run immediately
+# Manage your jobs
+silentreach schedule list          # See all scheduled jobs
+silentreach schedule run daily     # Run immediately
+silentreach schedule remove daily  # Cancel schedule
 ```
+
+### Delivery Options
+
+Reports are sent via:
+- **Telegram** — Instant messages with summary
+- **Email** — PDF attachments (coming soon)
+- **Local Files** — Saved to `~/.silentreach/reports/`
 
 ---
 
