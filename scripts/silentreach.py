@@ -53,6 +53,11 @@ def load_config() -> dict:
 
 async def cmd_search(args):
     """Execute a search across platforms."""
+    return asyncio.run(_cmd_search_impl(args))
+
+
+async def _cmd_search_impl(args):
+    """Implementation of search command."""
     config = load_config()
     
     # Import scrapers dynamically
@@ -540,6 +545,21 @@ def main():
     notify_parser = subparsers.add_parser("notify", help="Send test notification")
     notify_parser.add_argument("message", nargs="?", default="SilentReach is working!", help="Notification message")
     notify_parser.set_defaults(func=cmd_notify)
+    
+    # Competitor command
+    competitor_parser = subparsers.add_parser("competitor", help="Competitor intelligence scraping")
+    competitor_parser.add_argument("name", help="Competitor name to research")
+    competitor_parser.add_argument("--location", "-l", help="Filter by location (e.g., 'China', 'USA')")
+    competitor_parser.add_argument("--product", "-p", help="Filter by product category")
+    competitor_parser.add_argument("--save", "-s", action="store_true", help="Save to competitor database")
+    competitor_parser.add_argument("--report", "-r", choices=["json", "pdf", "docx", "md"], default="json",
+                                   help="Output format for report")
+    competitor_parser.add_argument("--output", "-o", help="Save report to file")
+    competitor_parser.set_defaults(func=cmd_competitor)
+    
+    # List competitors command
+    list_parser = subparsers.add_parser("list-competitors", help="List saved competitors")
+    list_parser.set_defaults(func=cmd_list_competitors)
     
     # Queue command
     queue_parser = subparsers.add_parser("queue", help="Manage offline queue")
@@ -1076,6 +1096,99 @@ async def cmd_kg_export(args):
     print(f"   Entities: {len(bundle['entities'])}")
     print(f"   Relations: {len(bundle['relations'])}")
     print(f"   Conflicts: {len(bundle['conflicts'])}")
+
+
+async def cmd_competitor(args):
+    """Run competitor intelligence scraping."""
+    from services.competitor import CompetitorScraper, CompetitorTracker
+    
+    print(f"\n🎯 Competitor Intelligence: {args.name}")
+    print("=" * 50)
+    
+    scraper = CompetitorScraper()
+    
+    # Run competitor search
+    profile = await scraper.search_competitor(args.name)
+    
+    # Apply filters if specified
+    if hasattr(args, 'location') and args.location:
+        if args.location.lower() not in str(profile.to_dict()).lower():
+            print(f"⚠️  No mention of location '{args.location}' found")
+    
+    if hasattr(args, 'product') and args.product:
+        products = [p for p in profile.products if args.product.lower() in p.lower()]
+        if not products:
+            print(f"⚠️  No products matching '{args.product}' found")
+    
+    # Generate report
+    print("\n📊 Competitor Profile:")
+    print(f"   Name: {profile.name}")
+    print(f"   Location: {profile.location or 'Not detected'}")
+    print(f"   Products: {len(profile.products)} found")
+    print(f"   Suppliers: {len(profile.suppliers)} detected")
+    print(f"   Mentions: {len(profile.mentions)} across platforms")
+    
+    # Format output
+    if getattr(args, 'report', 'json') == "json":
+        report = scraper.generate_report(format="json")
+        print("\n" + json.dumps(report, indent=2))
+    elif getattr(args, 'report', 'json') == "md":
+        lines = [
+            f"# Competitor Report: {args.name}",
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "",
+            "## Overview",
+            f"- **Name**: {profile.name}",
+            f"- **Location**: {profile.location or 'Unknown'}",
+            f"- **Products**: {', '.join(profile.products[:5]) or 'None detected'}",
+            f"- **Suppliers**: {len(profile.suppliers)} detected",
+            "",
+            "## Suppliers",
+        ]
+        for s in profile.suppliers[:10]:
+            lines.append(f"- {s['name']} (confidence: {s['confidence']:.0%})")
+        
+        lines.extend(["", "## Recent Mentions"])
+        for m in profile.mentions[-5:]:
+            lines.append(f"- **{m['source']}**: {m['text'][:100]}...")
+        
+        print("\n" + "\n".join(lines))
+    
+    # Save to database if requested
+    if getattr(args, 'save', False):
+        tracker = CompetitorTracker()
+        tracker.save_competitor(profile)
+        print(f"\n[✓] Saved to competitor database")
+    
+    # Save to file if requested
+    if hasattr(args, 'output') and args.output:
+        filepath = Path(args.output)
+        report = scraper.generate_report()
+        with open(filepath, "w") as f:
+            if getattr(args, 'report', 'json') == "json":
+                json.dump(report, f, indent=2, default=str)
+            else:
+                f.write("\n".join(lines))
+        print(f"[✓] Report saved to {filepath}")
+
+
+async def cmd_list_competitors(args):
+    """List all saved competitors."""
+    from services.competitor import CompetitorTracker
+    
+    tracker = CompetitorTracker()
+    competitors = tracker.list_competitors()
+    
+    if not competitors:
+        print("No competitors saved yet. Use `silentreach competitor <name> --save`")
+        return
+    
+    print(f"\n📋 Saved Competitors ({len(competitors)})")
+    print("=" * 50)
+    for name in competitors:
+        profile = tracker.load_competitor(name)
+        if profile:
+            print(f"- {profile.name} (scraped: {profile.scraped_at[:10]})")
 
 
 if __name__ == "__main__":
