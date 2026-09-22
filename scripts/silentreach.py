@@ -603,6 +603,21 @@ def main():
     list_parser = subparsers.add_parser("list-competitors", help="List saved competitors")
     list_parser.set_defaults(func=cmd_list_competitors)
     
+    # Location command
+    location_parser = subparsers.add_parser("location", help="Location intelligence scraping")
+    location_parser.add_argument("name", help="Location name (e.g., 'Ambergris Caye')")
+    location_parser.add_argument("--limit", "-l", type=int, default=50,
+                                 help="Max results per platform")
+    location_parser.add_argument("--save", "-s", action="store_true", help="Save to location database")
+    location_parser.add_argument("--report", "-r", choices=["json", "md"], default="json",
+                                 help="Output format for report")
+    location_parser.add_argument("--output", "-o", help="Save report to file")
+    location_parser.set_defaults(func=cmd_location)
+    
+    # List locations command
+    list_locations_parser = subparsers.add_parser("list-locations", help="List saved locations")
+    list_locations_parser.set_defaults(func=cmd_list_locations)
+    
     # Queue command
     queue_parser = subparsers.add_parser("queue", help="Manage offline queue")
     queue_sub = queue_parser.add_subparsers(dest="queue_action")
@@ -1332,6 +1347,72 @@ async def cmd_list_competitors(args):
         profile = tracker.load_competitor(name)
         if profile:
             print(f"- {profile.name} (scraped: {profile.scraped_at[:10]})")
+
+
+async def cmd_location(args):
+    """Research activity in a specific location."""
+    from services.location import LocationScraper, LocationTracker
+    
+    print(f"\n📍 Location Intelligence: {args.name}")
+    print("=" * 50)
+    
+    scraper = LocationScraper()
+    
+    # Run location research
+    profile = await scraper.research_location(args.name, limit=args.limit)
+    
+    # Generate report
+    print("\n📊 Location Profile:")
+    print(f"   Name: {profile.name}")
+    print(f"   Total Post Mentions: {profile.total_mentions}")
+    print(f"   Unique Authors: {len(profile.active_users)}")
+    print(f"   Pages Found: {len(profile.pages)}")
+    print(f"   Groups Found: {len(profile.groups)}")
+    print(f"   Businesses Found: {len(profile.businesses)}")
+    
+    # Format output
+    if args.report == "json":
+        report = scraper.generate_report()
+        print("\n" + json.dumps(report, indent=2))
+    elif args.report == "md":
+        markdown = scraper.to_markdown()
+        print("\n" + markdown)
+    
+    # Save to database if requested
+    if getattr(args, 'save', False):
+        tracker = LocationTracker()
+        tracker.save_location(profile)
+        print(f"\n[✓] Saved to location database")
+    
+    # Save to file if requested
+    if hasattr(args, 'output') and args.output:
+        filepath = Path(args.output)
+        if args.report == "json":
+            with open(filepath, "w") as f:
+                json.dump(scraper.generate_report(), f, indent=2, default=str)
+        else:
+            with open(filepath, "w") as f:
+                f.write(scraper.to_markdown())
+        print(f"[✓] Report saved to {filepath}")
+
+
+async def cmd_list_locations(args):
+    """List all saved locations."""
+    from services.location import LocationTracker
+    
+    tracker = LocationTracker()
+    locations = tracker.list_locations()
+    
+    if not locations:
+        print("No locations saved yet. Use `silentreach location <name> --save`")
+        return
+    
+    print(f"\n📍 Saved Locations ({len(locations)})")
+    print("=" * 50)
+    for name in locations:
+        profile = tracker.load_location(name)
+        if profile:
+            print(f"- {profile.name} ({profile.total_mentions} mentions)")
 
 
 if __name__ == "__main__":
