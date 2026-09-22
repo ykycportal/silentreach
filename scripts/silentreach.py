@@ -160,19 +160,31 @@ async def _cmd_search_impl(args):
     else:
         # Markdown format
         print(f"# SilentReach Results: {args.query}\n")
+        print(f"**Generated:** {datetime.now().strftime('%B %d, %Y at %H:%M')}")
+        print(f"**Platforms:** {', '.join(results.keys())}\n")
+        print("---\n")
+        
         for platform, data in results.items():
             print(f"## {platform.capitalize()}\n")
             if "error" in data:
-                print(f"Error: {data['error']}\n")
+                print(f"*Error: {data['error']}*\n")
             else:
                 items = data.get("results", data.get("videos", data.get("tweets", [])))
-                for i, item in enumerate(items[:10], 1):
-                    if isinstance(item, dict):
-                        title = item.get("title", item.get("text", item.get("name", "")))
-                        print(f"{i}. {title}")
-                    else:
-                        print(f"{i}. {item}")
-                print()
+                if items:
+                    print(f"**Found {len(items)} results:**\n")
+                    for i, item in enumerate(items[:10], 1):
+                        if isinstance(item, dict):
+                            title = item.get("title", item.get("text", item.get("name", "")))
+                            author = item.get("author", "")
+                            date = item.get("created_at", item.get("timestamp", ""))
+                            print(f"{i}. **{title[:80]}**")
+                            if author:
+                                print(f"   By: {author}")
+                            if date:
+                                print(f"   Date: {date[:10]}")
+                            print()
+                else:
+                    print("*No results found*\n")
     
     # Save to file
     if args.output:
@@ -244,14 +256,28 @@ async def cmd_intel(args):
     # Generate report
     report = generate_intel_report(args.topic, all_results)
     
+    # Also show summary
+    print(report)
+    
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
-            f.write(report)
-        logger.info(f"Report saved to {output_path}")
+        
+        # Auto-detect format from extension
+        fmt = output_path.suffix.lstrip('.')
+        if fmt in ['pdf']:
+            from services.output_fmt import OutputFormatter
+            pdf_bytes = OutputFormatter.to_pdf(all_results, title=f"Intelligence Report: {args.topic}")
+            if pdf_bytes:
+                with open(output_path, "wb") as f:
+                    f.write(pdf_bytes)
+                print(f"\n💾 PDF saved to: {output_path}")
+        else:
+            with open(output_path, "w") as f:
+                f.write(report)
+            print(f"\n💾 Report saved to: {output_path}")
     else:
-        print(report)
+        print(f"\n💡 Use -o flag to save report to file")
 
 
 def generate_intel_report(topic: str, results: dict) -> str:
@@ -919,16 +945,37 @@ async def cmd_kg_build(args):
     generator = MarketingReportGenerator(service)
     
     if args.output:
-        bundle = generator.generate_agent_bundle(args.topic)
-        with open(args.output, "w") as f:
-            import json
-            json.dump(bundle, f, indent=2, default=str)
-        print(f"\n💾 Saved to: {args.output}")
+        # Auto-detect format from extension
+        ext = Path(args.output).suffix.lstrip('.')
+        
+        if ext == 'pdf':
+            from services.output_fmt import OutputFormatter
+            pdf_bytes = OutputFormatter.to_pdf(
+                {"entities": list(service._entities.values())},
+                title=f"Knowledge Graph Report: {args.topic}"
+            )
+            if pdf_bytes:
+                with open(args.output, "wb") as f:
+                    f.write(pdf_bytes)
+                print(f"\n💾 PDF saved to: {args.output}")
+        elif ext == 'md':
+            report = generator.generate_campaign_brief(args.topic)
+            with open(args.output, "w") as f:
+                f.write(report)
+            print(f"\n💾 Markdown report saved to: {args.output}")
+        else:
+            bundle = generator.generate_agent_bundle(args.topic)
+            with open(args.output, "w") as f:
+                import json
+                json.dump(bundle, f, indent=2, default=str)
+            print(f"\n💾 Agent bundle saved to: {args.output}")
     else:
-        # Print summary
-        print(f"\n📊 Summary:")
-        for name, entity in list(service._entities.items())[:10]:
-            print(f"   • {name} ({entity.type}) - {len(entity.facts)} facts")
+        # Print human-readable summary
+        report = generator.generate_campaign_brief(args.topic)
+        print("\n" + "=" * 60)
+        print("📊 HUMAN-READABLE INTELLIGENCE REPORT")
+        print("=" * 60)
+        print(report)
     
     # Show conflicts if any
     if report['conflicts_found'] > 0:
