@@ -46,7 +46,7 @@ class EnergySystem:
         # Optimal battery range (25-80% = 55% usable)
         self.min_soc = 0.25
         self.max_soc = 0.80
-        self.usable_battery_capacity = battery_capacity_kwh * (max_soc - min_soc)
+        self.usable_battery_capacity = battery_capacity_kwh * (self.max_soc - self.min_soc)
     
     def calculate_monthly_savings(self) -> Dict:
         """Calculate monthly energy savings."""
