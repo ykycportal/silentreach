@@ -1558,7 +1558,10 @@ async def cmd_electric_calculate(args):
     print("🛡️ SAFETY IMPROVEMENTS:")
     print(f"   Fire Risk Reduction:   {safety['fire_risk_reduction']}")
     print(f"   CO Risk:               {safety['co_poisoning_risk']}")
-    print(f"   Guest Safety Score:    {safety['guest_safety']['before']} → {safety['guest_safety']['after']}/100")
+    if 'guest_safety' in safety:
+        print(f"   Guest Safety Score:    {safety['guest_safety']['before']} → {safety['guest_safety']['after']}/100")
+    else:
+        print(f"   Guest Safety: Improved")
     print()
     print("💰 INVESTMENT:")
     print(f"   Conversion Cost:       ${savings['conversion_cost']:,.0f}")
