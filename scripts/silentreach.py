@@ -657,24 +657,8 @@ def main():
     package_parser.add_argument("location", help="Location name")
     package_parser.add_argument("--host-name", "-n", required=True, help="Host name")
     package_parser.add_argument("--properties", "-p", type=int, default=1, help="Number of properties")
-    package_parser.add_argument("--output", "-o", help="Save proposal to file")
+    package_parser.add_argument("--output", "-o", help="Save report to file")
     package_parser.set_defaults(func=cmd_electric_package)
-    energy_sub = energy_parser.add_subparsers(dest="energy_action")
-    
-    # Calculate ROI
-    calc_parser = energy_sub.add_parser("calculate", help="Calculate ROI for a location")
-    calc_parser.add_argument("location", help="Location name (e.g., 'Ambergris Caye')")
-    calc_parser.add_argument("--properties", "-p", type=int, default=1,
-                             help="Number of properties")
-    calc_parser.add_argument("--output", "-o", help="Save report to file")
-    calc_parser.set_defaults(func=cmd_energy_calculate)
-    
-    # Generate proposal
-    proposal_parser = energy_sub.add_parser("proposal", help="Generate sales proposal")
-    proposal_parser.add_argument("location", help="Location name")
-    proposal_parser.add_argument("--host-name", "-n", required=True, help="Host name")
-    proposal_parser.add_argument("--output", "-o", help="Save proposal to file")
-    proposal_parser.set_defaults(func=cmd_energy_proposal)
     
     # Queue command
     queue_parser = subparsers.add_parser("queue", help="Manage offline queue")
