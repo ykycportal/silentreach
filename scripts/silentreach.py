@@ -62,6 +62,7 @@ async def cmd_search(args):
         "twitter": ("scrapers.twitter", "TwitterScraper"),
         "instagram": ("scrapers.instagram", "InstagramScraper"),
         "linkedin": ("scrapers.linkedin", "LinkedInScraper"),
+        "facebook": ("scrapers.facebook", "FacebookScraper"),
         "bilibili": ("scrapers.bilibili", "BilibiliScraper"),
     }
     
@@ -203,9 +204,9 @@ async def cmd_intel(args):
     
     # Platform order based on depth
     if args.depth == "quick":
-        platforms = ["reddit", "youtube", "bilibili"]
+        platforms = ["reddit", "youtube", "bilibili", "facebook"]
     elif args.depth == "full":
-        platforms = ["reddit", "youtube", "twitter", "linkedin", "bilibili"]
+        platforms = ["reddit", "youtube", "twitter", "linkedin", "bilibili", "facebook"]
     else:
         platforms = list(["reddit", "youtube", "twitter", "instagram", "linkedin", "bilibili"])
     
