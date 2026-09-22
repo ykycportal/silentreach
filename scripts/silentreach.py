@@ -633,8 +633,8 @@ def main():
     list_leads_parser = subparsers.add_parser("list-leads", help="List saved Airbnb leads")
     list_leads_parser.set_defaults(func=cmd_list_leads)
     
-    # Energy ROI calculator
-    energy_parser = subparsers.add_parser("energy", help="Energy ROI calculator for wind+battery+miner")
+    # Electric conversion calculator
+    electric_parser = subparsers.add_parser("electric", help="Gas-to-electric conversion calculator")
     electric_sub = electric_parser.add_subparsers(dest="electric_action")
     
     # Calculate savings
