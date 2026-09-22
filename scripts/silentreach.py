@@ -369,11 +369,45 @@ async def cmd_doctor(args):
     except ImportError:
         checks.append(("❌ yt-dlp", "not installed", False))
     
-    # Check Chrome/Chromium
-    import shutil
-    chrome_paths = ["chrome", "chromium", "chromium-browser", "google-chrome"]
-    chrome_found = any(shutil.which(p) for p in chrome_paths)
-    checks.append(("✅ Chrome/Chromium", "found" if chrome_found else "not found", chrome_found))
+    # Check browser engines (tiered: bwb-browser > termux-playwright > nodriver)
+    from services.platform_detect import get_platform, get_browser_status
+    browser_status = get_browser_status()
+    platform_name = browser_status["platform"]
+
+    # Check bwb-browser-termux (Android primary)
+    if browser_status["termux"]:
+        import shutil
+        has_bwb = shutil.which("npx") is not None
+        checks.append(("🌐 bwb-browser-termux", "available" if has_bwb else "needs npm", has_bwb))
+    else:
+        checks.append(("🌐 bwb-browser-termux", "N/A (non-Termux)", True))
+
+    # Check termux-playwright (Android form-fill)
+    try:
+        import termux_playwright
+        checks.append(("🌐 termux-playwright", "installed", True))
+    except ImportError:
+        checks.append(("🌐 termux-playwright", "not installed", False))
+
+    # Check nodriver (VPS/desktop primary)
+    try:
+        import nodriver
+        checks.append(("🌐 nodriver", "installed", True))
+    except ImportError:
+        checks.append(("🌐 nodriver", "not installed", False))
+
+    # Check Chrome/Chromium (for VPS/desktop)
+    if not browser_status["termux"]:
+        chrome_paths = ["chrome", "chromium", "chromium-browser", "google-chrome"]
+        chrome_found = any(shutil.which(p) for p in chrome_paths)
+        checks.append(("✅ Chrome/Chromium", "found" if chrome_found else "not found", chrome_found))
+
+    # Recommended engine
+    engines = browser_status.get("recommended_engines", [])
+    if engines:
+        checks.append(("🎯 Recommended Engine", engines[0], True))
+    else:
+        checks.append(("⚠️  Browser Engine", "none available - install dependencies", False))
     
     # Check config
     config_path = Path.home() / ".silentreach" / "config.yaml"
@@ -441,19 +475,44 @@ async def cmd_setup(args):
     
     # Check and install dependencies
     print("\nChecking dependencies...")
-    
-    deps = ["agent-reach", "nodriver", "beautifulsoup4", "yt-dlp"]
+
+    deps = ["agent-reach", "beautifulsoup4", "yt-dlp"]
     for dep in deps:
         try:
             __import__(dep.replace("-", "_"))
             print(f"✅ {dep} installed")
         except ImportError:
             print(f"❌ {dep} not found - run: pip install {dep}")
-    
+
+    # Browser engine detection and setup
+    from services.platform_detect import get_platform, is_termux, is_ubuntu_vps
+    platform_name = get_platform()
+    print(f"\n🌐 Platform detected: {platform_name}")
+
+    if is_termux():
+        print("\n📱 Termux/Android detected — installing browser engines...")
+        print("Option 1 (recommended): bwb-browser-termux (lightweight, ~2MB)")
+        print("  Run: npm install -g bwb-browser-termux")
+        print("\nOption 2: termux-playwright (form-fill capable, ~200MB)")
+        print("  Run: pkg install x11-repo && pkg install chromium")
+        print("       pip install termux-playwright && termux-playwright-install")
+    elif is_ubuntu_vps():
+        print("\n🖥️  Ubuntu VPS detected — installing browser engines...")
+        print("Option 1 (recommended): nodriver + system Chrome (stealth champion)")
+        print("  Run: apt install chromium-browser")
+        print("       pip install nodriver")
+        print("\nOption 2: Playwright")
+        print("  Run: pip install playwright")
+        print("       playwright install chromium")
+    else:
+        print("\n💻 Desktop detected")
+        print("Run: pip install nodriver  # or pip install playwright")
+
     print("\n" + "=" * 50)
     print("✅ Setup complete!")
     print("\nNext steps:")
-    print("1. Run 'silentreach doctor' to verify everything works")
+    print("1. Install a browser engine (see recommendations above)")
+    print("2. Run 'silentreach doctor' to verify")
     print("2. For Twitter/Instagram, login first:")
     print("   python scripts/silentreach.py login twitter")
     print("   python scripts/silentreach.py login instagram")

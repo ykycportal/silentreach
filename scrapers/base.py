@@ -44,14 +44,14 @@ class BaseScraper(ABC):
     Abstract base class for all scrapers.
     Implements common stealth features and result formatting.
     """
-    
+
     platform: str = "base"
     primary_method: str = "agent_reach"
     fallback_method: str = "nodriver"
     auth_required: bool = False
     stealth_level: str = "medium"
     delay_range: tuple = (1.0, 3.0)
-    
+
     def __init__(self, config: Optional[dict] = None):
         self.config = config or {}
         self._cookie_path = Path.home() / ".silentreach" / "cookies" / f"{self.platform}.json"
@@ -61,6 +61,61 @@ class BaseScraper(ABC):
             "errors": 0,
             "bytes_fetched": 0,
         }
+
+    async def _get_browser(self):
+        """Get the best available browser engine (termux-playwright > nodriver > bwb)."""
+        # Try termux-playwright first (Android native, form-fill capable)
+        try:
+            from termux_playwright import async_playwright_termux, launch
+            ctx = await async_playwright_termux().start()
+            browser = await launch(ctx, headless=self.config.get("headless", True))
+            logger.debug("Using termux-playwright engine")
+            return {"engine": "termux-playwright", "ctx": ctx, "browser": browser}
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"termux-playwright failed: {e}")
+
+        # Try nodriver (VPS/desktop, stealth CDP)
+        try:
+            import nodriver as uc
+            proxy_args = {"proxy": self.proxy} if self.config.get("proxy") else {}
+            browser = await uc.start(headless=self.config.get("headless", True), **proxy_args)
+            logger.debug("Using nodriver engine")
+            return {"engine": "nodriver", "browser": browser}
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.debug(f"nodriver failed: {e}")
+
+        # Try bwb-browser-termux (lightweight CDP fallback)
+        try:
+            import subprocess
+            proc = subprocess.Popen(
+                ["npx", "bwb-browser-termux", "--headless", "true"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            await asyncio.sleep(2)
+            logger.debug("Using bwb-browser engine")
+            return {"engine": "bwb-browser", "proc": proc}
+        except Exception as e:
+            logger.debug(f"bwb-browser failed: {e}")
+
+        raise RuntimeError("No browser engine available. Install: pip install termux-playwright")
+
+    async def _close_browser(self, handle):
+        """Cleanup browser resources."""
+        try:
+            if handle["engine"] == "termux-playwright":
+                await handle["browser"].close()
+                await handle["ctx"].stop()
+            elif handle["engine"] == "nodriver":
+                await handle["browser"].stop()
+            elif handle["engine"] == "bwb-browser":
+                handle.get("proc", None) and handle["proc"].terminate()
+        except Exception as e:
+            logger.warning(f"Browser cleanup error: {e}")
     
     @abstractmethod
     async def search(self, query: str, limit: int = 20, **kwargs) -> ScrapedResult:
