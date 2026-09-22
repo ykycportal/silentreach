@@ -978,8 +978,9 @@ async def cmd_kg_build(args):
         print(report)
     
     # Show conflicts if any
-    if report['conflicts_found'] > 0:
-        print(f"\n⚠️  {report['conflicts_found']} conflict(s) detected!")
+    conflicts = service.detect_conflicts()
+    if conflicts:
+        print(f"\n⚠️  {len(conflicts)} conflict(s) detected!")
         print("   Use: silentreach kg conflicts --entity <name>")
 
 
