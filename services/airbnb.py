@@ -25,6 +25,10 @@ class AirbnbHost:
         self.average_rating = 0.0
         self.response_rate = ""
         self.is_superhost = False
+        # NEW: Contact information
+        self.email = ""
+        self.phone = ""
+        self.whatsapp = ""
         self.contact_info = {}
         self.scraped_at = datetime.now().isoformat()
     
@@ -35,13 +39,48 @@ class AirbnbHost:
             (self.average_rating + listing.get("rating", 0)) / 2
             if self.average_rating else listing.get("rating", 0)
         )
+        
+        # Extract contact info from listing
+        text = listing.get("text", "")
+        self._extract_contact_info(text)
+    
+    def _extract_contact_info(self, text: str):
+        """Extract email and phone from listing text."""
+        # Email pattern
+        email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
+        emails = re.findall(email_pattern, text)
+        if emails and not self.email:
+            self.email = emails[0]
+        
+        # Phone patterns (various formats)
+        phone_patterns = [
+            r'\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}',  # US
+            r'\+?[0-9]{1,3}[-.\s]?[0-9]{4,14}',  # International
+            r'whatsapp?:\s*(\+?[0-9\s\-]{7,})',  # WhatsApp explicit
+        ]
+        
+        for pattern in phone_patterns:
+            phones = re.findall(pattern, text)
+            if phones:
+                phone = phones[0]
+                # Clean up
+                phone = re.sub(r'[\s\-]', '', phone)
+                if len(phone) >= 7 and not self.phone:
+                    self.phone = phone
+                    # Check if it's WhatsApp
+                    if 'whatsapp' in text.lower():
+                        self.whatsapp = phone
+                    break
     
     def to_dict(self) -> dict:
         return {
             "host_id": self.id,
             "name": self.name,
+            "email": self.email,
+            "phone": self.phone,
+            "whatsapp": self.whatsapp,
             "listings_count": len(self.listings),
-            "total_listings": self.listings,
+            "listings": self.listings,
             "location": self.location,
             "total_reviews": self.total_reviews,
             "average_rating": round(self.average_rating, 2),
@@ -68,10 +107,23 @@ class AirbnbHost:
         # High rating = quality host (may invest in property)
         score += int(self.average_rating * 2)
         
+        # Bonus for having contact info (easier to reach)
+        if self.email or self.phone:
+            score += 10
+        
         return score
     
     def generate_proposal_message(self, product: str = "Windmill + Battery System") -> str:
         """Generate personalized outreach message."""
+        # Add contact info to message if available
+        contact_line = ""
+        if self.email:
+            contact_line += f"\n📧 Email: {self.email}"
+        if self.phone:
+            contact_line += f"\n📱 Phone: {self.phone}"
+        if self.whatsapp:
+            contact_line += f"\n💬 WhatsApp: {self.whatsapp}"
+        
         message = f"""Hi {self.name or 'Airbnb Host'}!
 
 I noticed you're an active Airbnb host with {len(self.listings)} property/properties in {self.location or 'your area'}.
@@ -90,10 +142,72 @@ Would you be interested in learning more? I can provide:
 - Pricing details
 - Installation information
 - ROI calculations
-- References from other hosts
+- References from other hosts{contact_line}
 
 Best regards,
 SilentReach Lead Generator"""
+        return message
+    
+    def generate_email_template(self, product: str = "Windmill + Battery System") -> str:
+        """Generate email-specific template."""
+        subject = f"Power Solution for Your {self.location or 'Airbnb'} Properties"
+        
+        body = f"""Dear {self.name or 'Host'},
+
+I hope this email finds you well. My name is [Your Name] and I specialize in renewable energy solutions for short-term rental properties.
+
+I noticed you manage {len(self.listings)} property/properties in {self.location or 'your area'}, and I wanted to introduce you to our windmill + battery system designed specifically for Airbnb hosts.
+
+WHY THIS MATTERS FOR YOUR BUSINESS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Power outages = Bad reviews = Lost bookings
+• Our system keeps AC, lights, and essentials running
+• Guests never know there was a blackout
+• Eco-friendly = Marketing advantage for your listing
+
+WHAT YOU GET:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Reliable backup power (24-48 hours)
+✓ Silent operation (no generator noise)
+✓ Easy installation (1-2 hours)
+✓ Low maintenance costs
+✓ ROI in 12-18 months
+
+NEXT STEPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+I'd love to send you a customized proposal with:
+• Pricing for your specific properties
+• Installation timeline
+• Case studies from other hosts
+• Financing options (if available)
+
+Would you be available for a quick 10-minute call this week?
+
+You can reach me at:
+📧 {self.email or "[Your Email]"}
+📱 {self.phone or "[Your Phone]"}
+💬 WhatsApp: {self.whatsapp or "[Your WhatsApp]"}
+
+Looking forward to helping you improve your guests' experience!
+
+Best regards,
+[Your Name]
+[Your Company]
+[Your Contact Info]"""
+        
+        return f"Subject: {subject}\n\n{body}"
+    
+    def generate_sms_template(self, product: str = "Windmill + Battery System") -> str:
+        """Generate SMS/WhatsApp template."""
+        message = f"""Hi {self.name.split()[0] if self.name else 'there'}! 👋
+
+Quick question - do you have power issues at your {self.location or 'Airbnb'} properties?
+
+I help hosts solve blackout problems with windmill + battery systems. No more bad reviews from guests!
+
+Reply for details or call/text: [Your Number]
+
+- SilentReach"""
         return message
 
 
@@ -291,11 +405,15 @@ class AirbnbScraper:
         for host_id, host in self.hosts.items():
             lead_score = host.generate_lead_score()
             
+            # Include contact info in report
             lead = {
                 "host": host.to_dict(),
                 "lead_score": lead_score,
                 "recommended_action": self._get_action(lead_score),
                 "suggested_message": host.generate_proposal_message(),
+                "email_template": host.generate_email_template() if host.email else None,
+                "sms_template": host.generate_sms_template() if host.phone else None,
+                "contact_available": bool(host.email or host.phone),
             }
             
             report["leads"].append(lead)
@@ -330,16 +448,43 @@ class AirbnbScraper:
             score = host.generate_lead_score()
             action = self._get_action(score)
             
+            # Contact info badges
+            contact_badges = []
+            if host.email:
+                contact_badges.append("📧")
+            if host.phone:
+                contact_badges.append("📱")
+            if host.whatsapp:
+                contact_badges.append("💬")
+            contact_str = " ".join(contact_badges) if contact_badges else "❌"
+            
             lines.extend([
                 f"## {host.name or host_id}",
                 "",
-                f"**Lead Score:** {score}/100",
+                f"**Lead Score:** {score}/100 {contact_str}",
                 f"**Action:** {action}",
                 f"**Listings:** {len(host.listings)}",
                 f"**Location:** {host.location or 'Unknown'}",
                 f"**Rating:** {host.average_rating:.1f} ⭐ ({host.total_reviews} reviews)",
                 f"**Superhost:** {'Yes' if host.is_superhost else 'No'}",
                 "",
+            ])
+            
+            # Contact section
+            if host.email or host.phone:
+                lines.extend([
+                    "### Contact Information",
+                    "",
+                ])
+                if host.email:
+                    lines.append(f"- **📧 Email:** {host.email}")
+                if host.phone:
+                    lines.append(f"- **📱 Phone:** {host.phone}")
+                if host.whatsapp:
+                    lines.append(f"- **💬 WhatsApp:** {host.whatsapp}")
+                lines.append("")
+            
+            lines.extend([
                 "### Sample Listings",
                 "",
             ])
