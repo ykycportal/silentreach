@@ -153,7 +153,7 @@ SilentReach supports **10 platforms** with full scraping, stealth features, and 
 | **Twitter/X** | twitter-cli + API | ✅ nodriver | Required | Real-time buzz, influencer tracking |
 | **Instagram** | Node browser only | ✅ nodriver (headful) | Required | Visual content, influencer marketing |
 | **LinkedIn** | Jina Reader + API | ✅ nodriver | Required | B2B insights, professional trends |
-| **Facebook** | Browser automation | ✅ nodriver | Required | Group sentiment, ad research |
+| **Facebook** | Browser automation | ✅ nodriver | Required | Group sentiment, ad research, community monitoring |
 | **Bilibili** | bili-cli + yt-dlp | ❌ N/A | Optional | Chinese market, Asian trends |
 | **V2EX** | agent-reach | ❌ N/A | No | Tech community, developer insights |
 | **Xiaohongshu** | Node browser only | ✅ nodriver (headful) | Required | Chinese lifestyle, reviews |
