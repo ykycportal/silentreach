@@ -635,6 +635,30 @@ def main():
     
     # Energy ROI calculator
     energy_parser = subparsers.add_parser("energy", help="Energy ROI calculator for wind+battery+miner")
+    electric_sub = electric_parser.add_subparsers(dest="electric_action")
+    
+    # Calculate savings
+    calc_parser = electric_sub.add_parser("calculate", help="Calculate gas-to-electric savings")
+    calc_parser.add_argument("--type", "-t", choices=["studio", "1bed", "2bed", "3bed", "large"],
+                             default="standard", help="Property type")
+    calc_parser.add_argument("--output", "-o", help="Save report to file")
+    calc_parser.set_defaults(func=cmd_electric_calculate)
+    
+    # Generate proposal
+    proposal_parser = electric_sub.add_parser("proposal", help="Generate conversion proposal")
+    proposal_parser.add_argument("--host-name", "-n", required=True, help="Host name")
+    proposal_parser.add_argument("--type", "-t", choices=["studio", "1bed", "2bed", "3bed", "large"],
+                                  default="standard", help="Property type")
+    proposal_parser.add_argument("--output", "-o", help="Save proposal to file")
+    proposal_parser.set_defaults(func=cmd_electric_proposal)
+    
+    # Package deal (wind + battery + electric)
+    package_parser = electric_sub.add_parser("package", help="Complete energy package (wind+battery+electric)")
+    package_parser.add_argument("location", help="Location name")
+    package_parser.add_argument("--host-name", "-n", required=True, help="Host name")
+    package_parser.add_argument("--properties", "-p", type=int, default=1, help="Number of properties")
+    package_parser.add_argument("--output", "-o", help="Save proposal to file")
+    package_parser.set_defaults(func=cmd_electric_package)
     energy_sub = energy_parser.add_subparsers(dest="energy_action")
     
     # Calculate ROI
@@ -1527,57 +1551,54 @@ async def cmd_list_leads(args):
             print(f"- {host.get('name', name)} (Score: {score}, Listings: {host.get('listings_count', 0)})")
 
 
-async def cmd_energy_calculate(args):
-    """Calculate energy ROI for a location."""
-    from services.energy_roi import LocationEnergyCalculator
+async def cmd_electric_calculate(args):
+    """Calculate gas-to-electric conversion savings."""
+    from services.electric_conversion import GasToElectricConverter
     
-    print(f"\n⚡ Energy ROI Calculator: {args.location}")
+    print(f"\n🔥 Gas to Electric Conversion Calculator")
     print("=" * 60)
     
-    calc = LocationEnergyCalculator(args.location)
-    result = calc.calculate_for_location(property_count=args.properties)
+    converter = GasToElectricConverter(property_type=args.type)
+    savings = converter.calculate_savings()
+    safety = converter.calculate_safety_benefits()
     
-    # Print results
-    print(f"\n📍 Location: {result['location']}")
-    print(f"🏘️  Properties: {result['property_count']}")
+    print(f"\n📊 Property Type: {args.type.capitalize()}")
     print()
-    print("📊 System Configuration:")
-    print(f"   Wind Capacity: {result['system']['wind_capacity_kw']} kW")
-    print(f"   Battery: {result['system']['battery_capacity_kwh']} kWh")
-    print(f"   BTC Miner: {result['system']['btc_miner_watts']}W")
-    print()
-    print("💰 Monthly Benefits:")
-    print(f"   Savings per property: ${result['monthly_per_property']['monthly_savings_usd']:,.2f}")
-    print(f"   USDT earnings: ${result['monthly_per_property']['monthly_usdt_earnings']:,.2f}")
+    print("💰 MONTHLY SAVINGS:")
+    print(f"   Current Gas Cost:      ${savings['monthly_gas_cost']:,.2f}")
+    print(f"   New Electric Cost:     ${savings['monthly_electric_cost']:,.2f}")
     print(f"   ─────────────────────────────")
-    print(f"   TOTAL per property: ${result['monthly_per_property']['total_monthly_benefit']:,.2f}")
+    print(f"   MONTHLY SAVINGS:       ${savings['monthly_savings']:,.2f}")
+    print(f"   ANNUAL SAVINGS:        ${savings['annual_savings']:,.2f}")
     print()
-    print(f"📈 For {result['property_count']} properties:")
-    print(f"   Monthly savings: ${result['monthly_total']['savings']:,.2f}")
-    print(f"   Monthly USDT: ${result['monthly_total']['usdt_earnings']:,.2f}")
-    print(f"   TOTAL monthly: ${result['monthly_total']['total']:,.2f}")
+    print("🛡️ SAFETY IMPROVEMENTS:")
+    print(f"   Fire Risk Reduction:   {safety['fire_risk_reduction']}")
+    print(f"   CO Risk:               {safety['co_poisoning_risk']}")
+    print(f"   Guest Safety Score:    {safety['guest_safety']['before']} → {safety['guest_safety']['after']}/100")
     print()
-    print("📅 ROI Summary:")
-    print(f"   Payback: {result['roi']['payback_years']:.1f} years")
-    print(f"   5-Year ROI: {result['roi']['roi_5year_percent']:.1f}%")
-    print(f"   Annual Net Benefit: ${result['roi']['net_annual_benefit_usd']:,.0f}")
+    print("💰 INVESTMENT:")
+    print(f"   Conversion Cost:       ${savings['conversion_cost']:,.0f}")
+    print(f"   Payback Period:        {savings['payback_years']:.1f} years ({savings['payback_months']:.0f} months)")
+    print()
+    print(f"📈 5-Year Projection:")
+    print(f"   Total Savings:         ${savings['annual_savings'] * 5 - savings['conversion_cost']:,.0f}")
     
     if args.output:
         import json
         with open(args.output, "w") as f:
-            json.dump(result, f, indent=2)
+            json.dump({**savings, **safety}, f, indent=2)
         print(f"\n💾 Saved to: {args.output}")
 
 
-async def cmd_energy_proposal(args):
-    """Generate sales proposal for a host."""
-    from services.energy_roi import EnergySystem
+async def cmd_electric_proposal(args):
+    """Generate gas-to-electric conversion proposal."""
+    from services.electric_conversion import GasToElectricConverter
     
     print(f"\n📝 Generating Proposal for: {args.host_name}")
     print("=" * 60)
     
-    system = EnergySystem()
-    proposal = system.generate_proposal(args.host_name)
+    converter = GasToElectricConverter(property_type=args.type)
+    proposal = converter.generate_proposal(args.host_name)
     
     print(proposal)
     
@@ -1585,6 +1606,105 @@ async def cmd_energy_proposal(args):
         with open(args.output, "w") as f:
             f.write(proposal)
         print(f"\n💾 Proposal saved to: {args.output}")
+
+
+async def cmd_electric_package(args):
+    """Generate complete energy package proposal."""
+    from services.energy_roi import LocationEnergyCalculator, EnergySystem
+    from services.electric_conversion import GasToElectricConverter
+    
+    print(f"\n📝 Generating Complete Energy Package for: {args.host_name}")
+    print("=" * 60)
+    
+    # Get energy calculations
+    energy_calc = LocationEnergyCalculator(args.location)
+    energy_result = energy_calc.calculate_for_location(property_count=args.properties)
+    
+    # Get electric conversion calculations
+    converter = GasToElectricConverter(property_type="2bed")
+    electric_savings = converter.calculate_savings()
+    
+    # Combined benefits
+    combined_monthly = energy_result['monthly_total']['total'] + electric_savings['monthly_savings']
+    combined_annual = combined_monthly * 12
+    
+    print(f"""
+╔══════════════════════════════════════════════════════════════╗
+║           🌬️ COMPLETE ENERGY SOLUTION PACKAGE               ║
+║        Wind + Battery + BTC Miner + Induction Cooking        ║
+╚══════════════════════════════════════════════════════════════╝
+
+📍 Location: {args.location}
+🏘️  Properties: {args.properties}
+👤 Host: {args.host_name}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 COMBINED MONTHLY BENEFITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+From Wind + Battery + Miner:
+   Energy Savings:        ${energy_result['monthly_total']['savings']:,.2f}
+   USDT Earnings:         ${energy_result['monthly_total']['usdt_earnings']:,.2f}
+
+From Gas-to-Electric:
+   Cooking Savings:       ${electric_savings['monthly_savings']:,.2f}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📈 TOTAL COMBINED BENEFITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Monthly Total:         ${combined_monthly:,.2f}
+   Annual Total:          ${combined_annual:,.2f}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ BENEFITS SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏠 For Each Property:
+   • Zero electricity bills (connection fee only)
+   • Reliable power 24/7 (no blackouts)
+   • Safe induction cooking (no gas cylinders)
+   • Passive income from USDT exports
+   • Extended battery life (25-80% regulation)
+
+📊 Financial:
+   • Payback: {energy_result['roi']['payback_years']:.1f} years (energy)
+   • Electric payback: {electric_savings['payback_years']:.1f} years
+   • 5-Year ROI: {energy_result['roi']['roi_5year_percent']:.1f}%
+
+🎯 Market Advantage:
+   • "Eco-friendly" listing badge
+   • Higher guest safety scores
+   • Modern induction cooking
+   • Can charge premium rates
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Site survey (free)
+2. System design (custom sizing)
+3. Combined installation (1-2 days)
+4. Monitoring setup (mobile app)
+5. Guest certification (safety)
+
+📞 Contact us for a bundled quote!
+""")
+    
+    if args.output:
+        import json
+        combined = {
+            "location": args.location,
+            "host_name": args.host_name,
+            "property_count": args.properties,
+            "energy": energy_result,
+            "electric_conversion": electric_savings,
+            "combined_monthly": combined_monthly,
+            "combined_annual": combined_annual,
+        }
+        with open(args.output, "w") as f:
+            json.dump(combined, f, indent=2)
+        print(f"\n💾 Saved to: {args.output}")
 
 
 if __name__ == "__main__":
