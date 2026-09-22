@@ -618,6 +618,21 @@ def main():
     list_locations_parser = subparsers.add_parser("list-locations", help="List saved locations")
     list_locations_parser.set_defaults(func=cmd_list_locations)
     
+    # Airbnb command
+    airbnb_parser = subparsers.add_parser("airbnb", help="Airbnb host lead generation")
+    airbnb_parser.add_argument("location", help="Location to search (e.g., 'Ambergris Caye')")
+    airbnb_parser.add_argument("--limit", "-l", type=int, default=50,
+                               help="Max results per platform")
+    airbnb_parser.add_argument("--save", "-s", action="store_true", help="Save leads to database")
+    airbnb_parser.add_argument("--report", "-r", choices=["json", "md"], default="json",
+                               help="Output format for report")
+    airbnb_parser.add_argument("--output", "-o", help="Save report to file")
+    airbnb_parser.set_defaults(func=cmd_airbnb)
+    
+    # List leads command
+    list_leads_parser = subparsers.add_parser("list-leads", help="List saved Airbnb leads")
+    list_leads_parser.set_defaults(func=cmd_list_leads)
+    
     # Queue command
     queue_parser = subparsers.add_parser("queue", help="Manage offline queue")
     queue_sub = queue_parser.add_subparsers(dest="queue_action")
@@ -1413,6 +1428,84 @@ async def cmd_list_locations(args):
         profile = tracker.load_location(name)
         if profile:
             print(f"- {profile.name} ({profile.total_mentions} mentions)")
+
+
+async def cmd_airbnb(args):
+    """Generate leads from Airbnb hosts in a location."""
+    from services.airbnb import AirbnbScraper, LeadTracker
+    
+    print(f"\n🏠 Airbnb Lead Generation: {args.location}")
+    print("=" * 50)
+    
+    scraper = AirbnbScraper()
+    
+    # Search for hosts
+    print(f"\n🔍 Searching for Airbnb hosts in: {args.location}")
+    listings = await scraper.search_listings(args.location, limit=args.limit)
+    
+    print(f"   Found {len(listings)} potential leads")
+    
+    # Generate report
+    report = scraper.generate_lead_report(args.location)
+    
+    # Print summary
+    print("\n📊 Lead Summary:")
+    print(f"   Total Leads: {len(report['leads'])}")
+    
+    high_priority = [l for l in report['leads'] if l['lead_score'] >= 50]
+    medium_priority = [l for l in report['leads'] if 30 <= l['lead_score'] < 50]
+    low_priority = [l for l in report['leads'] if l['lead_score'] < 30]
+    
+    print(f"   High Priority: {len(high_priority)}")
+    print(f"   Medium Priority: {len(medium_priority)}")
+    print(f"   Low Priority: {len(low_priority)}")
+    
+    # Format output
+    if args.report == "json":
+        print("\n" + json.dumps(report, indent=2))
+    elif args.report == "md":
+        markdown = scraper.to_markdown()
+        print("\n" + markdown)
+    
+    # Save leads if requested
+    if getattr(args, 'save', False):
+        tracker = LeadTracker()
+        for lead in report['leads']:
+            host_id = lead['host']['host_id']
+            tracker.save_lead(lead, host_id)
+        print(f"\n[✓] Saved {len(report['leads'])} leads to database")
+    
+    # Save to file if requested
+    if hasattr(args, 'output') and args.output:
+        filepath = Path(args.output)
+        if args.report == "json":
+            with open(filepath, "w") as f:
+                json.dump(report, f, indent=2, default=str)
+        else:
+            with open(filepath, "w") as f:
+                f.write(scraper.to_markdown())
+        print(f"[✓] Report saved to {filepath}")
+
+
+async def cmd_list_leads(args):
+    """List all saved Airbnb leads."""
+    from services.airbnb import LeadTracker
+    
+    tracker = LeadTracker()
+    leads = tracker.list_leads()
+    
+    if not leads:
+        print("No leads saved yet. Use `silentreach airbnb <location> --save`")
+        return
+    
+    print(f"\n🏠 Saved Airbnb Leads ({len(leads)})")
+    print("=" * 50)
+    for name in leads:
+        lead = tracker.load_lead(name)
+        if lead:
+            host = lead.get('host', {})
+            score = lead.get('lead_score', 0)
+            print(f"- {host.get('name', name)} (Score: {score}, Listings: {host.get('listings_count', 0)})")
 
 
 if __name__ == "__main__":
