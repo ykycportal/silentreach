@@ -493,9 +493,11 @@ async def cmd_setup(args):
         print("\n📱 Termux/Android detected — installing browser engines...")
         print("Option 1 (recommended): bwb-browser-termux (lightweight, ~2MB)")
         print("  Run: npm install -g bwb-browser-termux")
-        print("\nOption 2: termux-playwright (form-fill capable, ~200MB)")
-        print("  Run: pkg install x11-repo && pkg install chromium")
+        print("  Note: Hooks into your phone's existing Chrome — no X11 needed")
+        print("\nOption 2: termux-playwright (form-fill capable)")
+        print("  Run: pkg install chromium  # from main repo, NOT x11-repo")
         print("       pip install termux-playwright && termux-playwright-install")
+        print("  ⚠️  Avoid x11-repo — Termux:X11 is heavy and unstable on Android")
     elif is_ubuntu_vps():
         print("\n🖥️  Ubuntu VPS detected — installing browser engines...")
         print("Option 1 (recommended): nodriver + system Chrome (stealth champion)")

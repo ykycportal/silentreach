@@ -12,7 +12,7 @@ from typing import Optional
 def is_termux() -> bool:
     """
     Detect if running in Termux/Android environment.
-    
+
     Termux sets TERMUX_VERSION env var and uses /data/data/com.termux as HOME.
     """
     return (
@@ -20,6 +20,11 @@ def is_termux() -> bool:
         "/data/data/com.termux" in os.environ.get("HOME", "") or
         "android" in platform.system().lower()
     )
+
+
+def has_termux_x11() -> bool:
+    """Check if Termux:X11 is available (not recommended — heavy/unstable)."""
+    return os.path.exists("/data/data/com.termux/files/usr/bin/startx11")
 
 
 def is_ubuntu_vps() -> bool:
