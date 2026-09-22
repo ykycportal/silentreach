@@ -633,6 +633,25 @@ def main():
     list_leads_parser = subparsers.add_parser("list-leads", help="List saved Airbnb leads")
     list_leads_parser.set_defaults(func=cmd_list_leads)
     
+    # Energy ROI calculator
+    energy_parser = subparsers.add_parser("energy", help="Energy ROI calculator for wind+battery+miner")
+    energy_sub = energy_parser.add_subparsers(dest="energy_action")
+    
+    # Calculate ROI
+    calc_parser = energy_sub.add_parser("calculate", help="Calculate ROI for a location")
+    calc_parser.add_argument("location", help="Location name (e.g., 'Ambergris Caye')")
+    calc_parser.add_argument("--properties", "-p", type=int, default=1,
+                             help="Number of properties")
+    calc_parser.add_argument("--output", "-o", help="Save report to file")
+    calc_parser.set_defaults(func=cmd_energy_calculate)
+    
+    # Generate proposal
+    proposal_parser = energy_sub.add_parser("proposal", help="Generate sales proposal")
+    proposal_parser.add_argument("location", help="Location name")
+    proposal_parser.add_argument("--host-name", "-n", required=True, help="Host name")
+    proposal_parser.add_argument("--output", "-o", help="Save proposal to file")
+    proposal_parser.set_defaults(func=cmd_energy_proposal)
+    
     # Queue command
     queue_parser = subparsers.add_parser("queue", help="Manage offline queue")
     queue_sub = queue_parser.add_subparsers(dest="queue_action")
@@ -1506,6 +1525,66 @@ async def cmd_list_leads(args):
             host = lead.get('host', {})
             score = lead.get('lead_score', 0)
             print(f"- {host.get('name', name)} (Score: {score}, Listings: {host.get('listings_count', 0)})")
+
+
+async def cmd_energy_calculate(args):
+    """Calculate energy ROI for a location."""
+    from services.energy_roi import LocationEnergyCalculator
+    
+    print(f"\n⚡ Energy ROI Calculator: {args.location}")
+    print("=" * 60)
+    
+    calc = LocationEnergyCalculator(args.location)
+    result = calc.calculate_for_location(property_count=args.properties)
+    
+    # Print results
+    print(f"\n📍 Location: {result['location']}")
+    print(f"🏘️  Properties: {result['property_count']}")
+    print()
+    print("📊 System Configuration:")
+    print(f"   Wind Capacity: {result['system']['wind_capacity_kw']} kW")
+    print(f"   Battery: {result['system']['battery_capacity_kwh']} kWh")
+    print(f"   BTC Miner: {result['system']['btc_miner_watts']}W")
+    print()
+    print("💰 Monthly Benefits:")
+    print(f"   Savings per property: ${result['monthly_per_property']['monthly_savings_usd']:,.2f}")
+    print(f"   USDT earnings: ${result['monthly_per_property']['monthly_usdt_earnings']:,.2f}")
+    print(f"   ─────────────────────────────")
+    print(f"   TOTAL per property: ${result['monthly_per_property']['total_monthly_benefit']:,.2f}")
+    print()
+    print(f"📈 For {result['property_count']} properties:")
+    print(f"   Monthly savings: ${result['monthly_total']['savings']:,.2f}")
+    print(f"   Monthly USDT: ${result['monthly_total']['usdt_earnings']:,.2f}")
+    print(f"   TOTAL monthly: ${result['monthly_total']['total']:,.2f}")
+    print()
+    print("📅 ROI Summary:")
+    print(f"   Payback: {result['roi']['payback_years']:.1f} years")
+    print(f"   5-Year ROI: {result['roi']['roi_5year_percent']:.1f}%")
+    print(f"   Annual Net Benefit: ${result['roi']['net_annual_benefit_usd']:,.0f}")
+    
+    if args.output:
+        import json
+        with open(args.output, "w") as f:
+            json.dump(result, f, indent=2)
+        print(f"\n💾 Saved to: {args.output}")
+
+
+async def cmd_energy_proposal(args):
+    """Generate sales proposal for a host."""
+    from services.energy_roi import EnergySystem
+    
+    print(f"\n📝 Generating Proposal for: {args.host_name}")
+    print("=" * 60)
+    
+    system = EnergySystem()
+    proposal = system.generate_proposal(args.host_name)
+    
+    print(proposal)
+    
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(proposal)
+        print(f"\n💾 Proposal saved to: {args.output}")
 
 
 if __name__ == "__main__":
